@@ -1,0 +1,1248 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Productivity Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root {
+    --bg: #FAFAF6;
+    --surface: #FFFFFF;
+    --surface2: #F4F3EE;
+    --surface3: #ECEADE;
+    --border: #E4E2D8;
+    --text: #33302B;
+    --text-secondary: #5C574E;
+    --muted: #908A7F;
+    --soft: #C4BFB5;
+
+    --olive: #6B7F4E;
+    --olive-light: #EEF2E6;
+    --olive-mid: #A3B48A;
+    --olive-dark: #4E5E38;
+
+    --stone: #8C7E6A;
+    --stone-light: #F0ECE4;
+
+    --plum: #7A6B8A;
+    --plum-light: #EFEAF4;
+
+    --rust: #A67653;
+    --rust-light: #F5EDE6;
+
+    --rose: #9E6B6B;
+    --rose-light: #F4EDED;
+
+    --serif: 'Playfair Display', Georgia, serif;
+    --sans: 'DM Sans', system-ui, sans-serif;
+    --mono: 'DM Mono', monospace;
+  }
+
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    font-size: 14px;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+    overflow-x: hidden;
+  }
+
+  /* ── Access Code Gate ── */
+  .gate-overlay {
+    position: fixed; inset: 0; z-index: 9999;
+    background: var(--bg);
+    display: flex; align-items: center; justify-content: center;
+  }
+  .gate-overlay.hidden { display: none; }
+  .gate-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    padding: 40px 36px;
+    max-width: 380px;
+    width: 90%;
+    text-align: center;
+    box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+  }
+  .gate-box h2 {
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 6px;
+  }
+  .gate-box p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 24px;
+    line-height: 1.5;
+  }
+  .gate-box input {
+    width: 100%;
+    padding: 12px 16px;
+    font-size: 16px;
+    font-family: var(--mono);
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+    text-align: center;
+    letter-spacing: 0.15em;
+    margin-bottom: 16px;
+    transition: border-color 0.15s;
+  }
+  .gate-box input:focus {
+    border-color: var(--olive-mid);
+    box-shadow: 0 0 0 2.5px rgba(107,127,78,0.1);
+  }
+  .gate-box .gate-btn {
+    width: 100%;
+    padding: 12px;
+    font-size: 14px;
+    font-weight: 500;
+    font-family: var(--sans);
+    background: var(--olive);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .gate-box .gate-btn:hover { opacity: 0.9; }
+  .gate-error {
+    color: var(--rust);
+    font-size: 12px;
+    margin-top: 12px;
+    display: none;
+  }
+  .gate-error.show { display: block; }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 28px 24px 0;
+  }
+  .header-inner {
+    max-width: 720px;
+    margin: 0 auto;
+    overflow: hidden;
+  }
+  .header-top {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 24px;
+    gap: 12px;
+  }
+  .header-top > div:first-child { min-width: 0; }
+  header h1 {
+    font-family: var(--serif);
+    font-size: 26px;
+    font-weight: 600;
+    color: var(--text);
+    line-height: 1.15;
+  }
+  header p {
+    font-size: 13px;
+    color: var(--muted);
+    margin-top: 2px;
+  }
+  .month-pill {
+    font-size: 11px;
+    color: var(--text-secondary);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 4px 10px;
+    font-weight: 500;
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  /* ── Nav ── */
+  .nav {
+    display: flex;
+    gap: 0;
+    border-bottom: 1px solid transparent;
+    margin: 0 -24px;
+    padding: 0 24px;
+  }
+  .nav-item {
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    transition: color 0.2s;
+    font-family: var(--sans);
+  }
+  .nav-item:hover { color: var(--text-secondary); }
+  .nav-item.active {
+    color: var(--olive-dark);
+  }
+  .nav-item.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px;
+    left: 20px;
+    right: 20px;
+    height: 2px;
+    background: var(--olive);
+    border-radius: 1px;
+  }
+
+  /* ── Main ── */
+  main {
+    max-width: 720px;
+    margin: 0 auto;
+    padding: 24px 24px 80px;
+  }
+  .tab-panel { display: none; }
+  .tab-panel.active { display: block; }
+
+  /* ── Cards ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .card-head {
+    font-family: var(--serif);
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text);
+    margin-bottom: 16px;
+  }
+  .card-label {
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    color: var(--muted);
+    margin-bottom: 12px;
+  }
+  .divider {
+    height: 1px;
+    background: var(--border);
+    margin: 20px 0;
+  }
+
+  /* ── Forms ── */
+  .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+    margin-bottom: 12px;
+  }
+  .field label {
+    display: block;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--text-secondary);
+    margin-bottom: 5px;
+  }
+  .field input, .field select {
+    width: 100%;
+    padding: 9px 12px;
+    font-size: 14px;
+    font-family: var(--sans);
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+  }
+  .field input:focus {
+    border-color: var(--olive-mid);
+    box-shadow: 0 0 0 2.5px rgba(107,127,78,0.1);
+  }
+  .field input::placeholder { color: var(--soft); }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 14px;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    cursor: pointer;
+    margin-bottom: 12px;
+    user-select: none;
+    transition: background 0.15s;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .toggle-row:hover { background: var(--surface2); }
+  .toggle-row input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--olive); cursor: pointer; }
+
+  .hidden-field { display: none; margin-bottom: 12px; }
+  .hidden-field.show { display: block; }
+
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 20px;
+    font-size: 13px;
+    font-weight: 500;
+    font-family: var(--sans);
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: opacity 0.15s, transform 0.1s;
+  }
+  .btn:active { transform: scale(0.98); }
+  .btn-olive {
+    background: var(--olive);
+    color: #fff;
+    width: 100%;
+  }
+  .btn-olive:hover { opacity: 0.9; }
+  .btn-plum {
+    background: var(--plum);
+    color: #fff;
+    width: 100%;
+  }
+  .btn-plum:hover { opacity: 0.9; }
+
+  /* ── Metrics ── */
+  .metrics {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 12px;
+  }
+  .metric-card {
+    padding: 14px 16px;
+    border-radius: 10px;
+    background: var(--surface2);
+  }
+  .metric-card .mc-label {
+    font-size: 11px;
+    color: var(--muted);
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    font-weight: 500;
+  }
+  .metric-card .mc-val {
+    font-family: var(--serif);
+    font-size: 24px;
+    font-weight: 700;
+    color: var(--text);
+  }
+  .metric-card .mc-sub {
+    font-size: 11px;
+    color: var(--soft);
+    margin-top: 2px;
+  }
+  .metric-card.olive .mc-val { color: var(--olive); }
+  .metric-card.rust .mc-val { color: var(--rust); }
+
+  /* ── Progress ── */
+  .prog-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 6px;
+  }
+  .prog-header strong { color: var(--text); font-weight: 600; }
+  .prog-track {
+    height: 6px;
+    background: var(--surface2);
+    border-radius: 99px;
+    overflow: hidden;
+  }
+  .prog-fill {
+    height: 100%;
+    border-radius: 99px;
+    transition: width 0.45s ease;
+  }
+  .prog-fill.olive { background: var(--olive); }
+  .prog-fill.rust { background: var(--rust); }
+  .prog-fill.plum { background: var(--plum); }
+  .prog-fill.stone { background: var(--stone); }
+  .prog-labels {
+    display: flex;
+    justify-content: space-between;
+    font-size: 10px;
+    color: var(--soft);
+    margin-top: 4px;
+  }
+
+  .status-banner {
+    margin-top: 14px;
+    padding: 12px 16px;
+    border-radius: 8px;
+    font-size: 13px;
+    display: none;
+    line-height: 1.5;
+  }
+  .status-banner.show { display: block; }
+  .status-banner.good { background: var(--olive-light); color: var(--olive-dark); }
+  .status-banner.warn { background: var(--rust-light); color: var(--rust); }
+
+  /* ── Log ── */
+  .log-list { display: flex; flex-direction: column; gap: 6px; }
+  .log-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 12px;
+    background: var(--surface2);
+    border-radius: 8px;
+    font-size: 13px;
+  }
+  .log-date { font-family: var(--mono); font-size: 12px; color: var(--muted); min-width: 40px; font-weight: 500; }
+  .log-tags { display: flex; flex-wrap: wrap; gap: 5px; flex: 1; }
+  .tag {
+    padding: 2px 9px;
+    border-radius: 4px;
+    font-size: 11px;
+    font-weight: 500;
+  }
+  .tag.t-work { background: var(--surface3); color: var(--text-secondary); }
+  .tag.t-direct { background: var(--olive-light); color: var(--olive-dark); }
+  .tag.t-train { background: var(--stone-light); color: var(--stone); }
+  .tag.t-ind { background: var(--plum-light); color: var(--plum); }
+  .tag.t-grp { background: var(--rose-light); color: var(--rose); }
+  .tag.t-name { background: var(--surface3); color: var(--muted); font-style: italic; }
+  .log-pct { font-family: var(--mono); font-size: 12px; font-weight: 600; min-width: 36px; text-align: right; }
+  .log-pct.good { color: var(--olive); }
+  .log-pct.bad { color: var(--rust); }
+  .log-pct.sup { color: var(--plum); font-size: 10px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.05em; }
+  .del-btn {
+    background: none; border: none; font-size: 14px; color: var(--soft);
+    cursor: pointer; padding: 2px 4px; line-height: 1; transition: color 0.15s; border-radius: 4px;
+  }
+  .del-btn:hover { color: var(--rose); background: var(--rose-light); }
+  .empty { text-align: center; color: var(--soft); font-size: 13px; padding: 28px 0; font-style: italic; }
+
+  .text-link {
+    font-size: 12px; color: var(--muted); background: none; border: none;
+    cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+    font-family: var(--sans);
+  }
+  .text-link:hover { color: var(--rose); }
+
+  /* ── Calendar ── */
+  .cal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+  }
+  .cal-header button {
+    background: none; border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 12px; cursor: pointer; font-family: var(--sans); font-size: 13px;
+    color: var(--text-secondary); transition: background 0.15s;
+  }
+  .cal-header button:hover { background: var(--surface2); }
+  .cal-header .cal-month { font-family: var(--serif); font-size: 16px; color: var(--text); }
+  .cal-grid {
+    display: grid;
+    grid-template-columns: repeat(7, 1fr);
+    gap: 2px;
+  }
+  .cal-day-name {
+    text-align: center;
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--muted);
+    padding: 6px 0;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+  }
+  .cal-cell {
+    aspect-ratio: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: background 0.15s;
+    position: relative;
+    font-size: 13px;
+    color: var(--text-secondary);
+  }
+  .cal-cell:hover { background: var(--surface2); }
+  .cal-cell.empty { cursor: default; }
+  .cal-cell.empty:hover { background: transparent; }
+  .cal-cell.today { font-weight: 600; color: var(--olive-dark); background: var(--olive-light); }
+  .cal-cell.selected { background: var(--olive); color: #fff; }
+  .cal-cell.selected .cal-dot { background: #fff; }
+  .cal-dot {
+    width: 5px; height: 5px; border-radius: 50%;
+    position: absolute; bottom: 4px;
+  }
+  .cal-dot.dot-good { background: var(--olive); }
+  .cal-dot.dot-warn { background: var(--rust); }
+  .cal-dot.dot-train { background: var(--stone); }
+  .cal-dot.dot-sup { background: var(--plum); }
+
+  .day-detail {
+    margin-top: 16px;
+    padding: 16px;
+    background: var(--surface2);
+    border-radius: 10px;
+  }
+  .day-detail-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 10px;
+  }
+  .day-detail-title { font-family: var(--serif); font-size: 16px; color: var(--text); }
+  .btn-sm {
+    padding: 5px 12px; font-size: 12px; font-weight: 500;
+    background: var(--olive); color: #fff; border: none; border-radius: 6px;
+    cursor: pointer; font-family: var(--sans);
+  }
+  .btn-sm:hover { opacity: 0.9; }
+
+  /* ── Stats ── */
+  .stat-row {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--surface2);
+  }
+  .stat-row:last-child { border-bottom: none; }
+  .stat-dot {
+    width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0;
+  }
+  .stat-info { flex: 1; }
+  .stat-label { font-size: 13px; color: var(--text-secondary); }
+  .stat-val { font-family: var(--serif); font-size: 20px; font-weight: 600; color: var(--text); }
+  .stat-sub { font-size: 11px; color: var(--muted); }
+
+  .mini-chart {
+    display: flex;
+    align-items: flex-end;
+    gap: 4px;
+    height: 80px;
+    padding-top: 8px;
+    margin-top: 8px;
+  }
+  .bar-col {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+    height: 100%;
+    justify-content: flex-end;
+  }
+  .bar-col .bar {
+    width: 100%;
+    max-width: 36px;
+    border-radius: 4px 4px 2px 2px;
+    min-height: 2px;
+    transition: height 0.4s ease;
+  }
+  .bar-col .bar-lbl {
+    font-size: 9px; color: var(--soft); font-family: var(--mono);
+  }
+  .bar-col .bar-val {
+    font-size: 9px; color: var(--muted); font-weight: 600; font-family: var(--mono);
+  }
+
+  .split-row {
+    display: flex; gap: 12px; margin-top: 8px;
+  }
+  .split-card {
+    flex: 1;
+    padding: 14px;
+    border-radius: 10px;
+    text-align: center;
+    background: var(--surface2);
+  }
+  .split-card .s-val { font-family: var(--serif); font-size: 22px; font-weight: 700; color: var(--text); }
+  .split-card .s-lbl { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .split-card.individual { border-left: 3px solid var(--plum); }
+  .split-card.group { border-left: 3px solid var(--rose); }
+
+  .split-status {
+    margin-top: 10px; padding: 8px 14px; border-radius: 6px;
+    font-size: 12px; text-align: center; font-weight: 500;
+  }
+  .split-status.ok { background: var(--olive-light); color: var(--olive-dark); }
+  .split-status.warn { background: var(--rust-light); color: var(--rust); }
+
+  /* ── LPCC ── */
+  .lpcc-row {
+    display: flex; align-items: flex-start; gap: 12px;
+    padding: 14px 0; border-bottom: 1px solid var(--surface2);
+  }
+  .lpcc-row:last-child { border-bottom: none; }
+  .lpcc-box {
+    width: 20px; height: 20px; border-radius: 6px; border: 1.5px solid var(--border);
+    background: var(--surface); cursor: pointer; display: flex; align-items: center;
+    justify-content: center; flex-shrink: 0; margin-top: 1px;
+    -webkit-appearance: none; appearance: none; transition: all 0.15s;
+  }
+  .lpcc-box:checked {
+    background: var(--olive); border-color: var(--olive);
+  }
+  .lpcc-box:checked::after {
+    content: ''; width: 5px; height: 9px;
+    border: solid #fff; border-width: 0 2px 2px 0;
+    transform: rotate(45deg); margin-bottom: 2px;
+  }
+  .lpcc-body { flex: 1; }
+  .lpcc-title { font-size: 14px; font-weight: 500; color: var(--text); margin-bottom: 2px; }
+  .lpcc-desc { font-size: 12px; color: var(--muted); line-height: 1.5; }
+  .lpcc-prog { margin-top: 8px; }
+  .lpcc-prog-head {
+    display: flex; justify-content: space-between; font-size: 11px; margin-bottom: 3px;
+  }
+  .lpcc-prog-head span:first-child { color: var(--muted); }
+  .lpcc-prog-head span:last-child { font-weight: 600; color: var(--text-secondary); }
+
+  /* ── Toast ── */
+  .toast {
+    position: fixed; bottom: 24px; left: 50%;
+    transform: translateX(-50%) translateY(70px);
+    background: var(--text); color: var(--surface2);
+    padding: 10px 22px; border-radius: 8px;
+    font-size: 13px; font-family: var(--sans);
+    transition: transform 0.3s cubic-bezier(0.16,1,0.3,1);
+    z-index: 999; white-space: nowrap;
+    box-shadow: 0 4px 16px rgba(0,0,0,0.12);
+  }
+  .toast.show { transform: translateX(-50%) translateY(0); }
+
+  /* ── Loading ── */
+  .loading-spinner {
+    display: inline-block;
+    width: 18px; height: 18px;
+    border: 2px solid var(--border);
+    border-top-color: var(--olive);
+    border-radius: 50%;
+    animation: spin 0.6s linear infinite;
+    vertical-align: middle;
+    margin-right: 8px;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  /* ── Responsive ── */
+  @media (max-width: 480px) {
+    header { padding: 20px 16px 0; }
+    header h1 { font-size: 22px; }
+    .header-top { gap: 6px; }
+    .month-pill { font-size: 10px; padding: 3px 8px; }
+    main { padding: 20px 12px 80px; }
+    .card { padding: 18px; }
+    .nav-item { padding: 10px 12px; font-size: 12px; }
+    .nav { margin: 0 -16px; padding: 0 16px; }
+    .form-row { gap: 10px; }
+  }
+</style>
+</head>
+<body>
+
+<!-- ═══ ACCESS CODE GATE ═══ -->
+<div class="gate-overlay" id="gateOverlay">
+  <div class="gate-box">
+    <h2>Productivity Tracker</h2>
+    <p>Enter your access code to continue.</p>
+    <input type="password" id="gateInput" placeholder="Access code" autocomplete="off" />
+    <button class="gate-btn" onclick="checkCode()">Enter</button>
+    <div class="gate-error" id="gateError">Incorrect code. Please try again.</div>
+  </div>
+</div>
+
+<header>
+  <div class="header-inner">
+    <div class="header-top">
+      <div>
+        <h1>Productivity Tracker</h1>
+        <p>Community Mental Health, California</p>
+      </div>
+      <div class="month-pill" id="monthPill"></div>
+    </div>
+    <nav class="nav" id="nav">
+      <button class="nav-item active" data-tab="log">Log</button>
+      <button class="nav-item" data-tab="calendar">Calendar</button>
+      <button class="nav-item" data-tab="stats">Statistics</button>
+      <button class="nav-item" data-tab="lpcc">LPCC</button>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ═══ LOG TAB ═══ -->
+<div class="tab-panel active" id="tab-log">
+
+  <div class="card">
+    <div class="card-head">Log work hours</div>
+    <div class="form-row">
+      <div class="field"><label>Work hours</label><input type="number" id="workHrs" placeholder="8" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+      <div class="field"><label>Direct service hours</label><input type="number" id="directHrs" placeholder="5" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+    </div>
+    <div class="field" style="margin-bottom:12px;"><label>Date</label><input type="date" id="dateInput" /></div>
+    <label class="toggle-row" for="trainCheck">
+      <input type="checkbox" id="trainCheck" onchange="toggleField('trainField','trainCheck')" />
+      <span>Training day <span style="color:var(--muted)">&mdash; hours excluded from countable</span></span>
+    </label>
+    <div class="hidden-field" id="trainField">
+      <div class="field"><label>Training hours</label><input type="number" id="trainHrs" placeholder="2" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+    </div>
+    <button class="btn btn-olive" onclick="addWorkEntry()">Add entry</button>
+  </div>
+
+  <div class="card">
+    <div class="card-head">Log supervision</div>
+    <div class="form-row">
+      <div class="field"><label>Individual hours</label><input type="number" id="supIndHrs" placeholder="1" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+      <div class="field"><label>Group hours</label><input type="number" id="supGrpHrs" placeholder="0" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+    </div>
+    <div class="form-row">
+      <div class="field"><label>Supervisor (optional)</label><input type="text" id="supName" placeholder="Name" /></div>
+      <div class="field"><label>Date</label><input type="date" id="supDate" /></div>
+    </div>
+    <button class="btn btn-plum" onclick="addSupEntry()">Add supervision</button>
+  </div>
+
+  <div class="card">
+    <div class="card-head">Monthly summary</div>
+    <div class="metrics">
+      <div class="metric-card" id="mcCountable"><div class="mc-label">Countable</div><div class="mc-val" id="valCountable">0.0</div><div class="mc-sub">work &minus; training</div></div>
+      <div class="metric-card" id="mcDirect"><div class="mc-label">Direct service</div><div class="mc-val" id="valDirect">0.0</div><div class="mc-sub">client contact</div></div>
+      <div class="metric-card" id="mcPct"><div class="mc-label">Productivity</div><div class="mc-val" id="valPct">&mdash;</div><div class="mc-sub">goal: 60%</div></div>
+      <div class="metric-card" id="mcMakeup"><div class="mc-label">To make up</div><div class="mc-val" id="valMakeup">&mdash;</div><div class="mc-sub" id="subMakeup">to reach 60%</div></div>
+    </div>
+    <div style="margin-top:16px;">
+      <div class="prog-header"><span>Progress to 60%</span><strong id="pctLive">0%</strong></div>
+      <div class="prog-track"><div class="prog-fill olive" id="barFill" style="width:0%"></div></div>
+      <div class="prog-labels"><span>0%</span><span>60%</span><span>100%</span></div>
+    </div>
+    <div class="status-banner" id="statusBanner"></div>
+    <p style="font-size:11px;color:var(--soft);margin-top:14px;line-height:1.5;">Your log auto-refreshes each month. All historical data is preserved for your LPCC totals and statistics.</p>
+    <div style="text-align:right;margin-top:8px;"><button class="text-link" onclick="resetMonth()">Clear this month only</button></div>
+  </div>
+
+  <div class="card">
+    <div class="card-head">Daily log</div>
+    <div class="log-list" id="logList"><div class="empty">No entries yet</div></div>
+  </div>
+</div>
+
+<!-- ═══ CALENDAR TAB ═══ -->
+<div class="tab-panel" id="tab-calendar">
+  <div class="card">
+    <div class="cal-header">
+      <button onclick="calNav(-1)">&larr; Prev</button>
+      <span class="cal-month" id="calMonth"></span>
+      <button onclick="calNav(1)">Next &rarr;</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div id="dayDetail"></div>
+  </div>
+</div>
+
+<!-- ═══ STATS TAB ═══ -->
+<div class="tab-panel" id="tab-stats">
+  <div class="card">
+    <div class="card-head">This month</div>
+    <div id="statsOverview"></div>
+  </div>
+  <div class="card">
+    <div class="card-head">All-time totals</div>
+    <div class="card-label">Cumulative since you started tracking</div>
+    <div id="statsAllTime"></div>
+  </div>
+  <div class="card">
+    <div class="card-head">Weekly breakdown</div>
+    <div class="card-label">Productivity % by week</div>
+    <div class="mini-chart" id="weeklyChart"></div>
+  </div>
+  <div class="card">
+    <div class="card-head">Monthly trend</div>
+    <div class="card-label">Last 6 months</div>
+    <div class="mini-chart" id="monthlyChart"></div>
+  </div>
+  <div class="card">
+    <div class="card-head">Hours breakdown</div>
+    <div class="card-label">All-time distribution</div>
+    <div id="hoursBreakdown"></div>
+  </div>
+  <div class="card">
+    <div class="card-head">Supervision split</div>
+    <div class="split-row" id="supSplit"></div>
+    <div id="supWarn"></div>
+  </div>
+</div>
+
+<!-- ═══ LPCC TAB ═══ -->
+<div class="tab-panel" id="tab-lpcc">
+  <div class="card">
+    <div class="card-head">Licensure checklist</div>
+    <p style="font-size:13px;color:var(--muted);margin-bottom:16px;line-height:1.6;">California BBS requirements for LPCC. Auto-tracked items update from your logged hours.</p>
+    <div id="lpccList"></div>
+  </div>
+  <div class="card" style="background:var(--olive-light);border-color:var(--olive-mid);">
+    <div class="card-label" style="color:var(--olive-dark);">Reference</div>
+    <p style="font-size:13px;color:var(--olive-dark);line-height:1.7;">
+      The Board of Behavioral Sciences requires 3,000 hours of post-degree supervised experience including 1,750 hours of direct client contact. Group supervision may not exceed 50% of total supervision. Minimum 1 hour/week individual supervision is required.
+    </p>
+  </div>
+</div>
+
+</main>
+
+<div class="toast" id="toast"></div>
+
+<script>
+/* ─── Supabase Config ─── */
+// REPLACE these with your Supabase project values
+const SUPABASE_URL = 'https://hvstmmpztnsagvmkzmyn.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh2c3RtbXB6dG5zYWd2bWt6bXluIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzYwODYzMTIsImV4cCI6MjA5MTY2MjMxMn0._BG33LFGcYGUClKaqTpwmiJFCfqZlsPal20SAOSAH0s';
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ─── Data ─── */
+let work = [], sup = [], lc = {};
+
+async function ld() {
+  try {
+    const { data: wd } = await sb.from('work_entries').select('*').order('date');
+    if (wd) work = wd.map(r => ({ id: r.id, date: r.date, work: r.work, direct: r.direct, train: r.train || 0 }));
+  } catch { work = []; }
+  try {
+    const { data: sd } = await sb.from('supervision_entries').select('*').order('date');
+    if (sd) sup = sd.map(r => ({ id: r.id, date: r.date, ind: r.ind, grp: r.grp, name: r.name || '' }));
+  } catch { sup = []; }
+  try {
+    const { data: ld2 } = await sb.from('lpcc_checks').select('*');
+    if (ld2) { lc = {}; ld2.forEach(r => { lc[r.id] = r.checked; }); }
+  } catch { lc = {}; }
+}
+
+async function saveLPCC(id, checked) {
+  lc[id] = checked;
+  await sb.from('lpcc_checks').upsert({ id, checked });
+}
+
+function todayS() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function curYM() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+function fmt(s) { const [,m,d]=s.split('-'); return `${parseInt(m)}/${parseInt(d)}`; }
+const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+
+/* ─── Access Code Gate ─── */
+async function checkCode() {
+  const input = document.getElementById('gateInput').value.trim();
+  if (!input) return;
+  try {
+    const { data } = await sb.from('app_config').select('value').eq('key', 'access_code').single();
+    if (data && data.value === input) {
+      sessionStorage.setItem('tracker_auth', 'true');
+      document.getElementById('gateOverlay').classList.add('hidden');
+      await ld();
+      renderLog();
+    } else {
+      document.getElementById('gateError').classList.add('show');
+    }
+  } catch (err) {
+    document.getElementById('gateError').textContent = 'Connection error. Check your setup.';
+    document.getElementById('gateError').classList.add('show');
+  }
+}
+
+document.getElementById('gateInput').addEventListener('keydown', e => {
+  if (e.key === 'Enter') checkCode();
+});
+
+async function tryAutoLogin() {
+  if (sessionStorage.getItem('tracker_auth') === 'true') {
+    document.getElementById('gateOverlay').classList.add('hidden');
+    await ld();
+    renderLog();
+  }
+}
+
+/* ─── Tabs ─── */
+document.querySelectorAll('.nav-item').forEach(b => {
+  b.addEventListener('click', () => {
+    document.querySelectorAll('.nav-item').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.tab-panel').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    document.getElementById('tab-'+b.dataset.tab).classList.add('active');
+    if(b.dataset.tab==='calendar') renderCal();
+    if(b.dataset.tab==='stats') renderStats();
+    if(b.dataset.tab==='lpcc') renderLPCC();
+  });
+});
+
+/* ─── Helpers ─── */
+function toggleField(fid,cid) {
+  document.getElementById(fid).className = 'hidden-field' + (document.getElementById(cid).checked ? ' show' : '');
+}
+function toast(m) {
+  const t=document.getElementById('toast'); t.textContent=m;
+  t.classList.add('show'); setTimeout(()=>t.classList.remove('show'),2200);
+}
+function uuid() {
+  return crypto.randomUUID ? crypto.randomUUID() : 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random()*16|0; return (c==='x'?r:(r&0x3|0x8)).toString(16);
+  });
+}
+
+/* ─── Add Work ─── */
+async function addWorkEntry() {
+  const w=parseFloat(document.getElementById('workHrs').value);
+  const d=parseFloat(document.getElementById('directHrs').value);
+  const ht=document.getElementById('trainCheck').checked;
+  const tr=ht?(parseFloat(document.getElementById('trainHrs').value)||0):0;
+  const dt=document.getElementById('dateInput').value;
+  if(!dt){toast('Select a date');return;} if(isNaN(w)||w<=0){toast('Enter work hours');return;}
+  if(isNaN(d)||d<0){toast('Enter direct hours');return;} if(d>w){toast('Direct > work');return;}
+  if(tr>w){toast('Training > work');return;}
+
+  const entry = { id: uuid(), date: dt, work: w, direct: d, train: tr };
+  work.push(entry);
+  work.sort((a,b)=>a.date.localeCompare(b.date));
+
+  // Save to Supabase
+  await sb.from('work_entries').insert({ id: entry.id, date: dt, work: w, direct: d, train: tr });
+
+  document.getElementById('workHrs').value=''; document.getElementById('directHrs').value='';
+  document.getElementById('trainHrs').value=''; document.getElementById('trainCheck').checked=false;
+  document.getElementById('trainField').className='hidden-field';
+  document.getElementById('dateInput').value=todayS();
+  toast('Entry added'); renderLog();
+}
+
+/* ─── Add Supervision ─── */
+async function addSupEntry() {
+  const ind=parseFloat(document.getElementById('supIndHrs').value)||0;
+  const grp=parseFloat(document.getElementById('supGrpHrs').value)||0;
+  const nm=document.getElementById('supName').value.trim();
+  const dt=document.getElementById('supDate').value;
+  if(!dt){toast('Select a date');return;} if(ind<=0&&grp<=0){toast('Enter supervision hours');return;}
+
+  const entry = { id: uuid(), date: dt, ind, grp, name: nm };
+  sup.push(entry);
+  sup.sort((a,b)=>a.date.localeCompare(b.date));
+
+  // Save to Supabase
+  await sb.from('supervision_entries').insert({ id: entry.id, date: dt, ind, grp, name: nm });
+
+  document.getElementById('supIndHrs').value=''; document.getElementById('supGrpHrs').value='';
+  document.getElementById('supName').value=''; document.getElementById('supDate').value=todayS();
+  toast('Supervision added'); renderLog();
+}
+
+async function delWork(i) {
+  const entry = work[i];
+  work.splice(i,1);
+  if (entry && entry.id) await sb.from('work_entries').delete().eq('id', entry.id);
+  renderLog();
+}
+
+async function delSup(i) {
+  const entry = sup[i];
+  sup.splice(i,1);
+  if (entry && entry.id) await sb.from('supervision_entries').delete().eq('id', entry.id);
+  renderLog();
+}
+
+async function resetMonth() {
+  if(!confirm('Clear this month?'))return;
+  const ym=curYM();
+  const toDelW = work.filter(e=>e.date.startsWith(ym));
+  const toDelS = sup.filter(e=>e.date.startsWith(ym));
+  work=work.filter(e=>!e.date.startsWith(ym));
+  sup=sup.filter(e=>!e.date.startsWith(ym));
+
+  // Delete from Supabase
+  for (const e of toDelW) { if (e.id) await sb.from('work_entries').delete().eq('id', e.id); }
+  for (const e of toDelS) { if (e.id) await sb.from('supervision_entries').delete().eq('id', e.id); }
+
+  renderLog();
+}
+
+/* ─── Render Log ─── */
+function renderLog() {
+  const ym=curYM(), me=work.filter(e=>e.date.startsWith(ym));
+  let tW=0,tD=0,tT=0;
+  me.forEach(e=>{tW+=e.work;tD+=e.direct;tT+=(e.train||0);});
+  const c=tW-tT, pct=c>0?(tD/c)*100:0, met=pct>=60, need=c>0?Math.max(0,0.6*c-tD):0;
+
+  document.getElementById('valCountable').textContent=c.toFixed(1);
+  document.getElementById('valDirect').textContent=tD.toFixed(1);
+
+  if(c>0){
+    document.getElementById('valPct').textContent=pct.toFixed(1)+'%';
+    document.getElementById('mcPct').className='metric-card '+(met?'olive':'rust');
+    document.getElementById('valMakeup').textContent=met?'0.0':need.toFixed(1)+'h';
+    document.getElementById('subMakeup').textContent=met?'Goal reached':'more direct hrs';
+    document.getElementById('mcMakeup').className='metric-card '+(met?'olive':'rust');
+  } else {
+    document.getElementById('valPct').textContent='\u2014';
+    document.getElementById('valMakeup').textContent='\u2014';
+    document.getElementById('subMakeup').textContent='to reach 60%';
+    document.getElementById('mcPct').className='metric-card';
+    document.getElementById('mcMakeup').className='metric-card';
+  }
+
+  const bp=Math.min(100,c>0?(pct/60)*100:0);
+  const bf=document.getElementById('barFill');
+  bf.style.width=bp.toFixed(1)+'%'; bf.className='prog-fill '+(met?'olive':'rust');
+  document.getElementById('pctLive').textContent=c>0?pct.toFixed(1)+'%':'0%';
+
+  const sb2=document.getElementById('statusBanner');
+  if(c>0){
+    sb2.className='status-banner show '+(met?'good':'warn');
+    sb2.innerHTML=met?'<strong>60% goal reached.</strong> Keep going.'
+      :`<strong>${need.toFixed(1)} more direct hours</strong> needed to reach 60%.`;
+  } else sb2.className='status-banner';
+
+  // Combined log
+  const all=[
+    ...work.map((e,i)=>({...e,type:'w',idx:i})),
+    ...sup.map((e,i)=>({...e,type:'s',idx:i}))
+  ].filter(e=>e.date.startsWith(ym)).sort((a,b)=>b.date.localeCompare(a.date));
+
+  const ll=document.getElementById('logList');
+  if(!all.length){ll.innerHTML='<div class="empty">No entries yet</div>';return;}
+  ll.innerHTML=all.map(e=>{
+    if(e.type==='w'){
+      const av=e.work-(e.train||0), dp=av>0?(e.direct/av*100):0;
+      const pc=dp>=60?'good':'bad', ps=av>0?dp.toFixed(0)+'%':'\u2014';
+      const tc=(e.train||0)>0?`<span class="tag t-train">${e.train}h train</span>`:'';
+      return `<div class="log-row"><span class="log-date">${fmt(e.date)}</span><div class="log-tags"><span class="tag t-work">${e.work}h</span><span class="tag t-direct">${e.direct}h direct</span>${tc}</div><span class="log-pct ${pc}">${ps}</span><button class="del-btn" onclick="delWork(${e.idx})">&times;</button></div>`;
+    } else {
+      const tags=[];
+      if(e.ind>0)tags.push(`<span class="tag t-ind">${e.ind}h indiv</span>`);
+      if(e.grp>0)tags.push(`<span class="tag t-grp">${e.grp}h group</span>`);
+      if(e.name)tags.push(`<span class="tag t-name">${e.name}</span>`);
+      return `<div class="log-row"><span class="log-date">${fmt(e.date)}</span><div class="log-tags">${tags.join('')}</div><span class="log-pct sup">sup</span><button class="del-btn" onclick="delSup(${e.idx})">&times;</button></div>`;
+    }
+  }).join('');
+}
+
+/* ─── Calendar ─── */
+let calYear, calMonth, calSelected='';
+function initCal(){const d=new Date();calYear=d.getFullYear();calMonth=d.getMonth();}
+function calNav(dir){calMonth+=dir;if(calMonth<0){calMonth=11;calYear--;}if(calMonth>11){calMonth=0;calYear++;}renderCal();}
+
+function renderCal(){
+  const ym=`${calYear}-${String(calMonth+1).padStart(2,'0')}`;
+  document.getElementById('calMonth').textContent=`${MN[calMonth]} ${calYear}`;
+  const firstDay=new Date(calYear,calMonth,1).getDay();
+  const days=new Date(calYear,calMonth+1,0).getDate();
+  const todayStr=todayS();
+
+  const dayMap={};
+  work.filter(e=>e.date.startsWith(ym)).forEach(e=>{
+    const d=parseInt(e.date.split('-')[2]);
+    if(!dayMap[d])dayMap[d]={work:[],sup:[]};
+    dayMap[d].work.push(e);
+  });
+  sup.filter(e=>e.date.startsWith(ym)).forEach(e=>{
+    const d=parseInt(e.date.split('-')[2]);
+    if(!dayMap[d])dayMap[d]={work:[],sup:[]};
+    dayMap[d].sup.push(e);
+  });
+
+  let html='';
+  ['Su','Mo','Tu','We','Th','Fr','Sa'].forEach(n=>{html+=`<div class="cal-day-name">${n}</div>`;});
+  for(let i=0;i<firstDay;i++) html+='<div class="cal-cell empty"></div>';
+  for(let d=1;d<=days;d++){
+    const ds=`${ym}-${String(d).padStart(2,'0')}`;
+    const isToday=ds===todayStr;
+    const isSel=ds===calSelected;
+    const info=dayMap[d];
+    let dot='';
+    if(info){
+      if(info.work.length){
+        let c=0,dir=0; info.work.forEach(e=>{c+=e.work-(e.train||0);dir+=e.direct;});
+        const p=c>0?(dir/c)*100:0;
+        if(c===0)dot='<span class="cal-dot dot-train"></span>';
+        else dot=p>=60?'<span class="cal-dot dot-good"></span>':'<span class="cal-dot dot-warn"></span>';
+      } else if(info.sup.length) dot='<span class="cal-dot dot-sup"></span>';
+    }
+    html+=`<div class="cal-cell${isToday?' today':''}${isSel?' selected':''}" onclick="selectDay('${ds}')">${d}${dot}</div>`;
+  }
+  document.getElementById('calGrid').innerHTML=html;
+
+  if(calSelected){
+    const sd=parseInt(calSelected.split('-')[2]);
+    const info=dayMap[sd];
+    let inner=`<div class="day-detail-header"><span class="day-detail-title">${calSelected}</span><button class="btn-sm" onclick="promptAddForDay('${calSelected}')">+ Add</button></div>`;
+    if(!info){
+      inner+='<div class="empty">No entries</div>';
+    } else {
+      info.work.forEach(e=>{
+        const av=e.work-(e.train||0),p=av>0?(e.direct/av*100).toFixed(0)+'%':'\u2014';
+        inner+=`<div class="log-row" style="margin-bottom:4px;"><div class="log-tags"><span class="tag t-work">${e.work}h</span><span class="tag t-direct">${e.direct}h direct</span>${(e.train||0)>0?`<span class="tag t-train">${e.train}h train</span>`:''}</div><span class="log-pct ${parseInt(p)>=60?'good':'bad'}">${p}</span></div>`;
+      });
+      info.sup.forEach(e=>{
+        const tags=[];
+        if(e.ind>0)tags.push(`<span class="tag t-ind">${e.ind}h indiv</span>`);
+        if(e.grp>0)tags.push(`<span class="tag t-grp">${e.grp}h group</span>`);
+        if(e.name)tags.push(`<span class="tag t-name">${e.name}</span>`);
+        inner+=`<div class="log-row" style="margin-bottom:4px;"><div class="log-tags">${tags.join('')}</div><span class="log-pct sup">sup</span></div>`;
+      });
+    }
+    document.getElementById('dayDetail').innerHTML=`<div class="day-detail">${inner}</div>`;
+  } else {
+    document.getElementById('dayDetail').innerHTML='';
+  }
+}
+
+function selectDay(ds){calSelected=calSelected===ds?'':ds;renderCal();}
+function promptAddForDay(ds){
+  document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.tab-panel').forEach(t=>t.classList.remove('active'));
+  document.querySelector('[data-tab="log"]').classList.add('active');
+  document.getElementById('tab-log').classList.add('active');
+  document.getElementById('dateInput').value=ds;
+  document.getElementById('supDate').value=ds;
+  document.getElementById('workHrs').focus();
+}
+
+/* ─── Stats ─── */
+function renderStats(){
+  const ym=curYM(), me=work.filter(e=>e.date.startsWith(ym)), ms=sup.filter(e=>e.date.startsWith(ym));
+  let tW=0,tD=0,tT=0; me.forEach(e=>{tW+=e.work;tD+=e.direct;tT+=(e.train||0);});
+  const c=tW-tT, pct=c>0?(tD/c)*100:0;
+  let tI=0,tG=0; ms.forEach(e=>{tI+=e.ind;tG+=e.grp;});
+  let aW=0,aD=0,aT=0; work.forEach(e=>{aW+=e.work;aD+=e.direct;aT+=(e.train||0);});
+  let aI=0,aG=0; sup.forEach(e=>{aI+=e.ind;aG+=e.grp;});
+
+  const td=new Date(),[y,m]=ym.split('-').map(Number),dim=new Date(y,m,0).getDate();
+  let wdl=0; for(let d=td.getDate()+1;d<=dim;d++){const dy=new Date(y,m-1,d).getDay();if(dy!==0&&dy!==6)wdl++;}
+  const dl=me.length, avgD=dl>0?tD/dl:0;
+  const pp=c>0&&dl>0?((tD+avgD*wdl)/(c+((c/dl)*wdl)))*100:0;
+  const needPD=wdl>0&&c>0?Math.max(0,(0.6*(c+((c/Math.max(1,dl))*wdl))-tD)/wdl):0;
+
+  const rows=[
+    {color:'var(--stone)',label:'Total work hours',val:tW.toFixed(1),sub:`${c.toFixed(1)} countable`},
+    {color:'var(--olive)',label:'Direct client hours',val:tD.toFixed(1),sub:`${pct.toFixed(1)}% productivity`},
+    {color:'var(--plum)',label:'Supervision hours',val:(tI+tG).toFixed(1),sub:`${tI.toFixed(1)} individual + ${tG.toFixed(1)} group`},
+    {color:'var(--rust)',label:'Training hours',val:tT.toFixed(1),sub:'excluded from countable'},
+    {color:'var(--text-secondary)',label:'Days logged',val:dl,sub:`${wdl} working days remaining`},
+    {color:pp>=60?'var(--olive)':'var(--rust)',label:'Projected month-end',val:pp>0?pp.toFixed(1)+'%':'\u2014',sub:pp>=60?'On track':wdl>0?`~${needPD.toFixed(1)}h direct/day needed`:''},
+  ];
+  document.getElementById('statsOverview').innerHTML=rows.map(r=>`
+    <div class="stat-row"><div class="stat-dot" style="background:${r.color}"></div><div class="stat-info"><div class="stat-label">${r.label}</div><div class="stat-val">${r.val}</div><div class="stat-sub">${r.sub}</div></div></div>
+  `).join('');
+
+  const aC=aW-aT, aPct=aC>0?(aD/aC)*100:0;
+  const totalMonths=new Set(work.map(e=>e.date.slice(0,7))).size;
+  const firstEntry=work.length>0?work[0].date:'\u2014';
+  const allTimeRows=[
+    {color:'var(--stone)',label:'Total work hours',val:aW.toFixed(1),sub:`${aC.toFixed(1)} countable (after training)`},
+    {color:'var(--olive)',label:'Total direct client hours',val:aD.toFixed(1),sub:`${aPct.toFixed(1)}% overall productivity`},
+    {color:'var(--rust)',label:'Total training hours',val:aT.toFixed(1),sub:`excluded from countable`},
+    {color:'var(--plum)',label:'Total supervision hours',val:(aI+aG).toFixed(1),sub:`${aI.toFixed(1)} individual + ${aG.toFixed(1)} group`},
+    {color:'var(--text-secondary)',label:'Months tracked',val:totalMonths,sub:`since ${firstEntry}`},
+    {color:'var(--olive)',label:'LPCC progress',val:`${Math.min(100,(aW/3000)*100).toFixed(1)}%`,sub:`${aW.toFixed(0)} / 3,000 total \u00b7 ${aD.toFixed(0)} / 1,750 direct`},
+  ];
+  document.getElementById('statsAllTime').innerHTML=allTimeRows.map(r=>`
+    <div class="stat-row"><div class="stat-dot" style="background:${r.color}"></div><div class="stat-info"><div class="stat-label">${r.label}</div><div class="stat-val">${r.val}</div><div class="stat-sub">${r.sub}</div></div></div>
+  `).join('');
+
+  const wks={};
+  me.forEach(e=>{const d=new Date(e.date+'T12:00:00'),wk=Math.ceil(d.getDate()/7);if(!wks[wk])wks[wk]={c:0,d:0};wks[wk].c+=e.work-(e.train||0);wks[wk].d+=e.direct;});
+  const wd=Object.entries(wks).sort(([a],[b])=>a-b).map(([w,v])=>({label:'W'+w,pct:v.c>0?(v.d/v.c)*100:0}));
+  miniChart('weeklyChart',wd,'var(--olive)','var(--olive-light)');
+
+  const md=[]; const now=new Date();
+  for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym2=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;const e2=work.filter(e=>e.date.startsWith(ym2));let cc=0,dd=0;e2.forEach(e=>{cc+=e.work-(e.train||0);dd+=e.direct;});md.push({label:MN[d.getMonth()],pct:cc>0?(dd/cc)*100:0});}
+  miniChart('monthlyChart',md,'var(--plum)','var(--plum-light)');
+
+  const cats=[
+    {label:'Direct client',val:aD,color:'olive'},{label:'Training',val:aT,color:'stone'},
+    {label:'Individual supervision',val:aI,color:'plum'},{label:'Group supervision',val:aG,color:'rose'},
+    {label:'Other work',val:Math.max(0,aW-aD-aT),color:'rust'},
+  ];
+  document.getElementById('hoursBreakdown').innerHTML=cats.map(c=>{
+    const p=aW>0?(c.val/aW)*100:0;
+    return `<div style="margin-bottom:10px;"><div style="display:flex;justify-content:space-between;font-size:12px;margin-bottom:3px;"><span style="color:var(--text-secondary)">${c.label}</span><span style="font-weight:600;color:var(--text)">${c.val.toFixed(1)}h</span></div><div class="prog-track"><div class="prog-fill ${c.color}" style="width:${p.toFixed(1)}%"></div></div></div>`;
+  }).join('');
+
+  document.getElementById('supSplit').innerHTML=`
+    <div class="split-card individual"><div class="s-val">${aI.toFixed(1)}</div><div class="s-lbl">Individual (all-time)</div></div>
+    <div class="split-card group"><div class="s-val">${aG.toFixed(1)}</div><div class="s-lbl">Group (all-time)</div></div>
+  `;
+  const ts=aI+aG, gp=ts>0?(aG/ts)*100:0;
+  document.getElementById('supWarn').innerHTML=ts>0?`<div class="split-status ${gp>50?'warn':'ok'}">Group: ${gp.toFixed(0)}% of total${gp>50?' \u2014 exceeds 50% limit':' (must stay \u226450%)'}</div>`:'';
+}
+
+function miniChart(id,data,color,lightColor){
+  const el=document.getElementById(id);
+  if(!data.length){el.innerHTML='<div class="empty">No data</div>';return;}
+  const mx=Math.max(...data.map(d=>d.pct),60);
+  el.innerHTML=data.map(d=>{
+    const h=Math.max(2,(d.pct/mx)*60);
+    return `<div class="bar-col"><span class="bar-val">${d.pct>0?d.pct.toFixed(0)+'%':''}</span><div class="bar" style="height:${h}px;background:${d.pct>=60?color:lightColor};"></div><span class="bar-lbl">${d.label}</span></div>`;
+  }).join('');
+}
+
+/* ─── LPCC ─── */
+function renderLPCC(){
+  let aW=0,aD=0; work.forEach(e=>{aW+=e.work;aD+=e.direct;});
+  let aI=0,aG=0; sup.forEach(e=>{aI+=e.ind;aG+=e.grp;});
+  const ts=aI+aG, gp=ts>0?(aG/ts)*100:0;
+
+  const items=[
+    {id:'total_3000',title:'3,000 hours supervised experience',desc:'Total post-degree supervised professional experience.',cur:aW,tot:3000,auto:true},
+    {id:'direct_1750',title:'1,750 hours direct client contact',desc:'Minimum direct counseling contact hours.',cur:aD,tot:1750,auto:true},
+    {id:'sup_group',title:'Group supervision \u226450% of total',desc:`Currently ${gp.toFixed(0)}%.`,cur:null,tot:null,auto:false,autoChk:gp<=50&&ts>0},
+    {id:'sup_weekly',title:'1 hour/week individual supervision',desc:'Throughout the accrual period.'},
+    {id:'degree',title:'Master\u2019s or doctoral degree in counseling',desc:'From an accredited institution.'},
+    {id:'law_ethics',title:'CA Law & Ethics Exam',desc:'Passed before accruing hours.'},
+    {id:'ncmhce',title:'NCMHCE exam passed',desc:'National Clinical Mental Health Counseling Examination.'},
+    {id:'livescan',title:'LiveScan fingerprint clearance',desc:'DOJ background check.'},
+    {id:'sup_forms',title:'Supervisor responsibility statements',desc:'Signed before supervision begins.'},
+    {id:'exp_logs',title:'Weekly experience logs maintained',desc:'Signed by supervisor weekly.'},
+  ];
+
+  document.getElementById('lpccList').innerHTML=items.map(it=>{
+    const chk=lc[it.id]||false;
+    const autoChk=it.autoChk!==undefined?it.autoChk:false;
+    const isChk=it.auto?(it.cur>=it.tot):(it.autoChk!==undefined?autoChk:chk);
+    const dis=it.auto||it.autoChk!==undefined;
+    let prog='';
+    if(it.auto&&it.tot){
+      const p=Math.min(100,(it.cur/it.tot)*100);
+      prog=`<div class="lpcc-prog"><div class="lpcc-prog-head"><span>${it.cur.toFixed(0)} / ${it.tot.toLocaleString()}</span><span>${p.toFixed(1)}%</span></div><div class="prog-track"><div class="prog-fill olive" style="width:${p.toFixed(1)}%"></div></div></div>`;
+    }
+    return `<div class="lpcc-row"><input type="checkbox" class="lpcc-box" ${isChk?'checked':''} ${dis?'disabled style="opacity:0.6;"':''} onchange="saveLPCC('${it.id}',this.checked)"/><div class="lpcc-body"><div class="lpcc-title">${it.title}</div><div class="lpcc-desc">${it.desc}</div>${prog}</div></div>`;
+  }).join('');
+}
+
+/* ─── Init ─── */
+function init(){
+  document.getElementById('dateInput').value=todayS();
+  document.getElementById('supDate').value=todayS();
+  const n=new Date();
+  document.getElementById('monthPill').textContent=n.toLocaleString('default',{month:'long',year:'numeric'});
+  initCal();
+  tryAutoLogin();
+}
+init();
+</script>
+</body>
+</html>
