@@ -616,6 +616,67 @@
   .lpcc-prog-head span:first-child { color: var(--muted); }
   .lpcc-prog-head span:last-child { font-weight: 600; color: var(--text-secondary); }
 
+  /* ── H+M Input Toggle ── */
+  .input-mode-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 11px;
+    color: var(--muted);
+    cursor: pointer;
+    background: none;
+    border: none;
+    font-family: var(--sans);
+    padding: 2px 0;
+    margin-bottom: 10px;
+    transition: color 0.15s;
+  }
+  .input-mode-toggle:hover { color: var(--olive); }
+  .input-mode-toggle .toggle-icon {
+    display: inline-block;
+    width: 28px; height: 16px;
+    background: var(--border);
+    border-radius: 8px;
+    position: relative;
+    transition: background 0.2s;
+  }
+  .input-mode-toggle .toggle-icon::after {
+    content: '';
+    position: absolute;
+    top: 2px; left: 2px;
+    width: 12px; height: 12px;
+    background: #fff;
+    border-radius: 50%;
+    transition: transform 0.2s;
+  }
+  .input-mode-toggle.active .toggle-icon { background: var(--olive); }
+  .input-mode-toggle.active .toggle-icon::after { transform: translateX(12px); }
+
+  .hm-pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px;
+  }
+  .hm-pair input {
+    width: 100%;
+    padding: 9px 10px;
+    font-size: 14px;
+    font-family: var(--sans);
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+    transition: border-color 0.15s, box-shadow 0.15s;
+    -webkit-appearance: none;
+  }
+  .hm-pair input:focus {
+    border-color: var(--olive-mid);
+    box-shadow: 0 0 0 2.5px rgba(107,127,78,0.1);
+  }
+  .hm-pair input::placeholder { color: var(--soft); }
+  .hm-hidden { display: none; }
+
   /* ── Toast ── */
   .toast {
     position: fixed; bottom: 24px; left: 50%;
@@ -694,9 +755,14 @@
 
   <div class="card">
     <div class="card-head">Log work hours</div>
-    <div class="form-row">
+    <button class="input-mode-toggle" onclick="toggleInputMode('work')"><span class="toggle-icon"></span><span id="workModeLabel">Switch to hours + minutes</span></button>
+    <div class="form-row" id="workDecRow">
       <div class="field"><label>Work hours</label><input type="number" id="workHrs" placeholder="8" min="0" max="24" step="0.25" inputmode="decimal" /></div>
       <div class="field"><label>Direct service hours</label><input type="number" id="directHrs" placeholder="5" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+    </div>
+    <div class="form-row hm-hidden" id="workHmRow">
+      <div class="field"><label>Work hours</label><div class="hm-pair"><input type="number" id="workH" placeholder="8" min="0" max="24" inputmode="numeric" /><input type="number" id="workM" placeholder="0 min" min="0" max="59" inputmode="numeric" /></div></div>
+      <div class="field"><label>Direct service hours</label><div class="hm-pair"><input type="number" id="directH" placeholder="5" min="0" max="24" inputmode="numeric" /><input type="number" id="directM" placeholder="0 min" min="0" max="59" inputmode="numeric" /></div></div>
     </div>
     <div class="field" style="margin-bottom:12px;"><label>Date</label><input type="date" id="dateInput" /></div>
     <label class="toggle-row" for="trainCheck">
@@ -704,16 +770,22 @@
       <span>Training day <span style="color:var(--muted)">&mdash; hours excluded from countable</span></span>
     </label>
     <div class="hidden-field" id="trainField">
-      <div class="field"><label>Training hours</label><input type="number" id="trainHrs" placeholder="2" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+      <div class="field" id="trainDecField"><label>Training hours</label><input type="number" id="trainHrs" placeholder="2" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+      <div class="field hm-hidden" id="trainHmField"><label>Training hours</label><div class="hm-pair"><input type="number" id="trainH" placeholder="2" min="0" max="24" inputmode="numeric" /><input type="number" id="trainM" placeholder="0 min" min="0" max="59" inputmode="numeric" /></div></div>
     </div>
     <button class="btn btn-olive" onclick="addWorkEntry()">Add entry</button>
   </div>
 
   <div class="card">
     <div class="card-head">Log supervision</div>
-    <div class="form-row">
+    <button class="input-mode-toggle" onclick="toggleInputMode('sup')"><span class="toggle-icon"></span><span id="supModeLabel">Switch to hours + minutes</span></button>
+    <div class="form-row" id="supDecRow">
       <div class="field"><label>Individual hours</label><input type="number" id="supIndHrs" placeholder="1" min="0" max="24" step="0.25" inputmode="decimal" /></div>
       <div class="field"><label>Group hours</label><input type="number" id="supGrpHrs" placeholder="0" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+    </div>
+    <div class="form-row hm-hidden" id="supHmRow">
+      <div class="field"><label>Individual hours</label><div class="hm-pair"><input type="number" id="supIndH" placeholder="1" min="0" max="24" inputmode="numeric" /><input type="number" id="supIndM" placeholder="0 min" min="0" max="59" inputmode="numeric" /></div></div>
+      <div class="field"><label>Group hours</label><div class="hm-pair"><input type="number" id="supGrpH" placeholder="0" min="0" max="24" inputmode="numeric" /><input type="number" id="supGrpM" placeholder="0 min" min="0" max="59" inputmode="numeric" /></div></div>
     </div>
     <div class="form-row">
       <div class="field"><label>Supervisor (optional)</label><input type="text" id="supName" placeholder="Name" /></div>
@@ -906,12 +978,49 @@ function uuid() {
   });
 }
 
+/* ─── H+M Input Mode ─── */
+const inputMode = { work: 'dec', sup: 'dec' };
+
+function toggleInputMode(card) {
+  const isHm = inputMode[card] === 'dec';
+  inputMode[card] = isHm ? 'hm' : 'dec';
+  const btn = event.currentTarget;
+  btn.classList.toggle('active', isHm);
+
+  if (card === 'work') {
+    document.getElementById('workDecRow').classList.toggle('hm-hidden', isHm);
+    document.getElementById('workHmRow').classList.toggle('hm-hidden', !isHm);
+    document.getElementById('trainDecField').classList.toggle('hm-hidden', isHm);
+    document.getElementById('trainHmField').classList.toggle('hm-hidden', !isHm);
+    document.getElementById('workModeLabel').textContent = isHm ? 'Switch to decimal' : 'Switch to hours + minutes';
+  } else {
+    document.getElementById('supDecRow').classList.toggle('hm-hidden', isHm);
+    document.getElementById('supHmRow').classList.toggle('hm-hidden', !isHm);
+    document.getElementById('supModeLabel').textContent = isHm ? 'Switch to decimal' : 'Switch to hours + minutes';
+  }
+}
+
+function hmToDecimal(hId, mId) {
+  const h = parseFloat(document.getElementById(hId).value) || 0;
+  const m = parseFloat(document.getElementById(mId).value) || 0;
+  return h + m / 60;
+}
+
+function getVal(decId, hId, mId, card) {
+  if (inputMode[card] === 'hm') return hmToDecimal(hId, mId);
+  return parseFloat(document.getElementById(decId).value);
+}
+
+function clearHmFields(ids) {
+  ids.forEach(id => { document.getElementById(id).value = ''; });
+}
+
 /* ─── Add Work ─── */
 async function addWorkEntry() {
-  const w=parseFloat(document.getElementById('workHrs').value);
-  const d=parseFloat(document.getElementById('directHrs').value);
+  const w=getVal('workHrs','workH','workM','work');
+  const d=getVal('directHrs','directH','directM','work');
   const ht=document.getElementById('trainCheck').checked;
-  const tr=ht?(parseFloat(document.getElementById('trainHrs').value)||0):0;
+  const tr=ht?(inputMode.work==='hm'?hmToDecimal('trainH','trainM'):(parseFloat(document.getElementById('trainHrs').value)||0)):0;
   const dt=document.getElementById('dateInput').value;
   if(!dt){toast('Select a date');return;} if(isNaN(w)||w<=0){toast('Enter work hours');return;}
   if(isNaN(d)||d<0){toast('Enter direct hours');return;} if(d>w){toast('Direct > work');return;}
@@ -927,14 +1036,15 @@ async function addWorkEntry() {
   document.getElementById('workHrs').value=''; document.getElementById('directHrs').value='';
   document.getElementById('trainHrs').value=''; document.getElementById('trainCheck').checked=false;
   document.getElementById('trainField').className='hidden-field';
+  clearHmFields(['workH','workM','directH','directM','trainH','trainM']);
   document.getElementById('dateInput').value=todayS();
   toast('Entry added'); renderLog();
 }
 
 /* ─── Add Supervision ─── */
 async function addSupEntry() {
-  const ind=parseFloat(document.getElementById('supIndHrs').value)||0;
-  const grp=parseFloat(document.getElementById('supGrpHrs').value)||0;
+  const ind=inputMode.sup==='hm'?hmToDecimal('supIndH','supIndM'):(parseFloat(document.getElementById('supIndHrs').value)||0);
+  const grp=inputMode.sup==='hm'?hmToDecimal('supGrpH','supGrpM'):(parseFloat(document.getElementById('supGrpHrs').value)||0);
   const nm=document.getElementById('supName').value.trim();
   const dt=document.getElementById('supDate').value;
   if(!dt){toast('Select a date');return;} if(ind<=0&&grp<=0){toast('Enter supervision hours');return;}
@@ -948,6 +1058,7 @@ async function addSupEntry() {
 
   document.getElementById('supIndHrs').value=''; document.getElementById('supGrpHrs').value='';
   document.getElementById('supName').value=''; document.getElementById('supDate').value=todayS();
+  clearHmFields(['supIndH','supIndM','supGrpH','supGrpM']);
   toast('Supervision added'); renderLog();
 }
 
