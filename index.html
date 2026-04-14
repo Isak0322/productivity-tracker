@@ -6,6 +6,7 @@
 <title>Productivity Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400&family=DM+Sans:ital,opsz,wght@0,9..40,300;0,9..40,400;0,9..40,500;1,9..40,300;1,9..40,400&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet" />
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/pdf-lib@1.17.1/dist/pdf-lib.min.js"></script>
 <style>
   :root {
     --bg: #FAFAF6;
@@ -723,147 +724,12 @@
   .hm-pair input::placeholder { color: var(--soft); }
   .hm-hidden { display: none; }
 
-  /* ── Weekly Log ── */
-  .wklog-overlay {
-    position: fixed; inset: 0; z-index: 9998;
-    background: rgba(0,0,0,0.3);
-    display: flex; align-items: flex-start; justify-content: center;
-    padding: 20px;
-    overflow-y: auto;
-  }
-  .wklog-overlay.hidden { display: none; }
-  .wklog-page {
-    background: #fff;
-    max-width: 900px;
-    width: 100%;
-    padding: 40px 36px;
-    border-radius: 12px;
-    box-shadow: 0 8px 40px rgba(0,0,0,0.15);
-    margin: 20px 0;
-  }
-  .wklog-page .wklog-title {
-    font-family: var(--serif);
-    font-size: 16px;
-    font-weight: 700;
-    text-align: center;
-    margin-bottom: 4px;
-    color: var(--text);
-  }
-  .wklog-page .wklog-subtitle {
-    font-size: 11px;
-    text-align: center;
-    color: var(--muted);
-    margin-bottom: 20px;
-  }
-  .wklog-header-grid {
-    display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 8px 20px;
-    margin-bottom: 20px;
-    font-size: 12px;
-    color: var(--text);
-  }
-  .wklog-header-grid .wklog-field {
-    display: flex;
-    align-items: baseline;
-    gap: 4px;
-  }
-  .wklog-header-grid .wklog-field span {
-    font-weight: 600;
-    white-space: nowrap;
-    font-size: 11px;
-    color: var(--text-secondary);
-  }
-  .wklog-header-grid .wklog-field .wklog-val {
-    flex: 1;
-    border-bottom: 1px solid var(--border);
-    padding-bottom: 2px;
-    min-height: 18px;
-    font-weight: 400;
-    color: var(--text);
-  }
-  .wklog-table {
-    width: 100%;
-    border-collapse: collapse;
-    font-size: 11px;
-    margin-bottom: 16px;
-  }
-  .wklog-table th {
-    background: var(--surface2);
-    border: 1px solid var(--border);
-    padding: 6px 4px;
-    font-weight: 600;
-    color: var(--text-secondary);
-    text-align: center;
-    font-size: 10px;
-    line-height: 1.3;
-  }
-  .wklog-table th.col-label {
-    font-size: 12px;
-    font-weight: 700;
-    color: var(--text);
-    background: var(--surface3);
-  }
-  .wklog-table td {
-    border: 1px solid var(--border);
-    padding: 6px 8px;
-    text-align: center;
-    font-family: var(--mono);
-    font-size: 12px;
-    color: var(--text);
-    height: 32px;
-  }
-  .wklog-table td.week-label {
-    text-align: left;
-    font-family: var(--sans);
-    font-size: 11px;
-    color: var(--text-secondary);
-    white-space: nowrap;
-  }
-  .wklog-table td.sig-cell {
-    font-family: var(--sans);
-    color: var(--soft);
-    font-style: italic;
-    font-size: 10px;
-  }
-  .wklog-table tr.totals-row td {
-    font-weight: 700;
-    background: var(--surface2);
-  }
-  .wklog-footnotes {
-    font-size: 10px;
-    color: var(--muted);
-    line-height: 1.6;
-    margin-bottom: 16px;
-  }
-  .wklog-actions {
-    display: flex;
-    gap: 10px;
-    justify-content: flex-end;
-  }
-  .wklog-actions button {
-    padding: 8px 20px;
-    font-size: 13px;
-    font-family: var(--sans);
-    font-weight: 500;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: opacity 0.15s;
-  }
-
   /* ── Weekly Log Setup Form ── */
   .wklog-setup .form-row-3 {
     display: grid;
     grid-template-columns: 1fr 1fr 1fr;
     gap: 12px;
     margin-bottom: 12px;
-  }
-
-  @media print {
-    body > *:not(.wklog-overlay) { display: none !important; }
-    .wklog-overlay { position: static; background: none; padding: 0; }
-    .wklog-page { box-shadow: none; border-radius: 0; padding: 20px; margin: 0; }
-    .wklog-actions { display: none !important; }
   }
 
   /* ── Toast ── */
@@ -1094,7 +960,7 @@
       <div class="field"><label>Start week of (first Monday)</label><input type="date" id="wklogStart" /></div>
       <div class="field"><label>Year</label><input type="number" id="wklogYear" placeholder="2025" min="2020" max="2035" /></div>
     </div>
-    <button class="btn btn-olive" onclick="generateWeeklyLog()">Generate weekly log</button>
+    <button class="btn btn-olive" id="wklogBtn" onclick="generateWeeklyLog()">Download filled BBS form (PDF)</button>
   </div>
 
   <div class="card" style="background:var(--olive-light);border-color:var(--olive-mid);">
@@ -1106,10 +972,6 @@
 </div>
 
 </main>
-
-<div class="wklog-overlay hidden" id="wklogOverlay">
-  <div class="wklog-page" id="wklogPage"></div>
-</div>
 
 <div class="toast" id="toast"></div>
 
@@ -1658,8 +1520,18 @@ function renderLPCC(){
   }).join('');
 }
 
-/* ─── Weekly Log Generator ─── */
-function generateWeeklyLog() {
+/* ─── Weekly Log Generator (fills official BBS PDF) ─── */
+const BBS_PDF_URL = 'https://www.bbs.ca.gov/pdf/forms/lpc/lpcc_wkylog_37a-638_option1.pdf';
+
+function fmtDate(d) {
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+function fmtShort(d) {
+  return `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
+}
+function fmtHrs(v) { return v > 0 ? v.toFixed(1) : ''; }
+
+async function generateWeeklyLog() {
   const name = document.getElementById('wklogName').value.trim();
   const apcc = document.getElementById('wklogAPCC').value.trim();
   const supervisor = document.getElementById('wklogSupervisor').value.trim();
@@ -1667,169 +1539,164 @@ function generateWeeklyLog() {
   const setting = document.getElementById('wklogSetting').value.trim();
   const address = document.getElementById('wklogAddress').value.trim();
   const startDate = document.getElementById('wklogStart').value;
-  const year = document.getElementById('wklogYear').value;
+  const year = document.getElementById('wklogYear').value || new Date().getFullYear().toString();
 
   if (!startDate) { toast('Select a start date'); return; }
   if (!name) { toast('Enter your name'); return; }
 
-  // Calculate 10 weeks of data
-  const weeks = [];
-  const start = new Date(startDate + 'T12:00:00');
+  const btn = document.getElementById('wklogBtn');
+  btn.disabled = true; btn.textContent = 'Generating PDF...';
 
-  for (let w = 0; w < 10; w++) {
-    const weekStart = new Date(start);
-    weekStart.setDate(start.getDate() + w * 7);
-    const weekEnd = new Date(weekStart);
-    weekEnd.setDate(weekStart.getDate() + 6);
+  try {
+    // Parse name into Last, First, Middle
+    const nameParts = name.split(',').map(s => s.trim());
+    const lastName = nameParts[0] || '';
+    const firstMiddle = (nameParts[1] || '').split(' ');
+    const firstName = firstMiddle[0] || '';
+    const middleName = firstMiddle.slice(1).join(' ') || '';
 
-    const wsStr = fmtDate(weekStart);
-    const weStr = fmtDate(weekEnd);
+    // Calculate 10 weeks of data
+    const weeks = [];
+    const start = new Date(startDate + 'T12:00:00');
 
-    // Find matching work entries for this week
-    let directHrs = 0, nonClinicalHrs = 0, trainHrs = 0;
-    work.forEach(e => {
-      if (e.date >= wsStr && e.date <= weStr) {
-        directHrs += e.direct;
-        nonClinicalHrs += (e.work - e.direct);
-        trainHrs += (e.train || 0);
-      }
-    });
+    for (let w = 0; w < 10; w++) {
+      const weekStart = new Date(start);
+      weekStart.setDate(start.getDate() + w * 7);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      const wsStr = fmtDate(weekStart);
+      const weStr = fmtDate(weekEnd);
 
-    // Find matching supervision entries
-    let indSup = 0, grpSup = 0;
-    sup.forEach(e => {
-      if (e.date >= wsStr && e.date <= weStr) {
-        indSup += e.ind;
-        grpSup += e.grp;
-      }
-    });
+      let directHrs = 0, nonClinicalHrs = 0;
+      work.forEach(e => {
+        if (e.date >= wsStr && e.date <= weStr) {
+          directHrs += e.direct;
+          nonClinicalHrs += (e.work - e.direct);
+        }
+      });
 
-    // Column A = Direct counseling
-    const colA = directHrs;
-    // Column B = Non-clinical (work - direct includes training, admin, notes, etc.)
-    // Supervision is a sub-category of B, included in the non-clinical total
-    const supTotal = indSup + grpSup;
-    const colB = (nonClinicalHrs) + supTotal;
-    // B1 = Individual/triadic supervision
-    const colB1 = indSup;
-    // B2 = Group supervision
-    const colB2 = grpSup;
-    // C = A + B (max 40)
-    const colC = Math.min(40, colA + colB);
+      let indSup = 0, grpSup = 0;
+      sup.forEach(e => {
+        if (e.date >= wsStr && e.date <= weStr) {
+          indSup += e.ind;
+          grpSup += e.grp;
+        }
+      });
 
-    weeks.push({
-      weekOf: fmtShort(weekStart),
-      a: colA,
-      b: colB,
-      b1: colB1,
-      b2: colB2,
-      c: colC
-    });
+      const colA = directHrs;
+      const colB = nonClinicalHrs + indSup + grpSup;
+      const colB1 = indSup;
+      const colB2 = grpSup;
+      const colC = Math.min(40, colA + colB);
+
+      weeks.push({ weekOf: fmtShort(weekStart), a: colA, b: colB, b1: colB1, b2: colB2, c: colC });
+    }
+
+    const totals = { a: 0, b: 0, b1: 0, b2: 0, c: 0 };
+    weeks.forEach(w => { totals.a += w.a; totals.b += w.b; totals.b1 += w.b1; totals.b2 += w.b2; totals.c += w.c; });
+
+    // Fetch and fill the official BBS PDF
+    const pdfBytes = await fetch(BBS_PDF_URL).then(r => r.arrayBuffer());
+    const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
+    const form = pdfDoc.getForm();
+
+    // Helper to safely set a text field
+    function setField(name, value) {
+      try { form.getTextField(name).setText(value); } catch(e) { console.warn('Field not found:', name, e); }
+    }
+
+    // Header fields
+    setField('Name of Associate Last', lastName);
+    setField('First', firstName);
+    setField('Middle', middleName);
+    setField('Supervisor Name', supervisor);
+    setField('Name of Work Setting', setting);
+    setField('Address of Work Setting', address);
+    setField('undefined', bbs);         // BBS File No.
+    setField('undefined_3', apcc);      // APCC Number
+    setField('YEAR_2', year);
+
+    // Try to check the APCC checkbox
+    try { form.getCheckBox('undefined_2').check(); } catch(e) {}
+
+    // Week of dates - Row 1 uses nested field name, rows 2-10 use _N pattern
+    const weekOfFields = [
+      'Week of.0.0.0',
+      'Week of_2.0', 'Week of_3.0', 'Week of_4.0', 'Week of_5.0',
+      'Week of_6.0', 'Week of_7.0', 'Week of_8.0', 'Week of_9.0', 'Week of_10.0'
+    ];
+
+    // Column A (Direct Counseling) - "C 1 R N"
+    const colAFields = [
+      'C 1 R 1', 'C 1 R 2', 'C 1 R 3', 'C 1 R 4', 'C 1 R 5',
+      'C 1 R 6', 'C 1 R 7', 'C 1 R 8', 'C 1 R 9', 'C 1 R 10'
+    ];
+
+    // Column B (Non-Clinical) - mixed naming
+    const colBFields = [
+      'C 2 R 1Week of.0.1.0', 'C 2 r 2', 'C 2 R 3', 'C 2 R 4', 'C 2 R 5',
+      'C 2 R 6', 'C 2 R 7', 'C2 R 8', 'C 2 R 9', 'C 2 R 10'
+    ];
+
+    // Column B1 (Individual Supervision) - "3rd column N"
+    const colB1Fields = [
+      '3rd column 1', '3rd column 2', '3rd column 3', '3rd column 4', '3rd column 5',
+      '3rd column 6', '3rd column 7', '3rd column 8', '3rd column 9', '3rd column 10'
+    ];
+
+    // Column B2 (Group Supervision) - "C 4 R N"
+    const colB2Fields = [
+      'C 4 R 1', 'C 4 R 2', 'C 4 R 3', 'C 4 R 4', 'C 4 R 5',
+      'C 4 R 6', 'C 4 R 7', 'C 4 R 8', 'C 4 R 9', 'C 4 R 10'
+    ];
+
+    // Column C (Total) - "C 5 R N" or "C5 R N"
+    const colCFields = [
+      'C 5 R 1', 'C5 R 2', 'C5 R 3', 'C5 R 4', 'C5 R 5',
+      'C5 R 6', 'C5 R 7', 'C5 R 8', 'C5 R 9', 'C5 R 10'
+    ];
+
+    // Fill each row
+    for (let i = 0; i < 10; i++) {
+      setField(weekOfFields[i], weeks[i].weekOf);
+      setField(colAFields[i], fmtHrs(weeks[i].a));
+      setField(colBFields[i], fmtHrs(weeks[i].b));
+      setField(colB1Fields[i], fmtHrs(weeks[i].b1));
+      setField(colB2Fields[i], fmtHrs(weeks[i].b2));
+      setField(colCFields[i], fmtHrs(weeks[i].c));
+    }
+
+    // Totals row (row 11)
+    setField('C 1 R 11', fmtHrs(totals.a));
+    setField('C2 R 11', fmtHrs(totals.b));
+    setField('C 3 Total Hours Per Week A  B  C CRow11.0', fmtHrs(totals.b1));
+    setField('C 4 R 11', fmtHrs(totals.b2));
+    setField('C5 R 11', fmtHrs(totals.c));
+
+    // Flatten so values show when opened in any PDF viewer
+    form.flatten();
+
+    // Download
+    const filledPdf = await pdfDoc.save();
+    const blob = new Blob([filledPdf], { type: 'application/pdf' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `BBS_Weekly_Log_${startDate}.pdf`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    toast('PDF downloaded');
+  } catch(err) {
+    console.error('PDF generation error:', err);
+    toast('Error generating PDF. Check console.');
   }
 
-  // Calculate totals
-  const totals = { a: 0, b: 0, b1: 0, b2: 0, c: 0 };
-  weeks.forEach(w => {
-    totals.a += w.a; totals.b += w.b;
-    totals.b1 += w.b1; totals.b2 += w.b2;
-    totals.c += w.c;
-  });
-
-  // Render the form
-  const page = document.getElementById('wklogPage');
-  page.innerHTML = `
-    <div class="wklog-title">Associate Professional Clinical Counselor (APCC)<br>Weekly Log of Experience Hours</div>
-    <div class="wklog-subtitle">DCA BBS 37A-638 (Rev. 08/2022) &mdash; Auto-generated from tracked data</div>
-
-    <div class="wklog-header-grid">
-      <div class="wklog-field"><span>Name of Associate:</span><div class="wklog-val">${esc(name)}</div></div>
-      <div class="wklog-field"><span>APCC Number:</span><div class="wklog-val">${esc(apcc)}</div></div>
-      <div class="wklog-field"><span>Supervisor Name:</span><div class="wklog-val">${esc(supervisor)}</div></div>
-      <div class="wklog-field"><span>BBS File No.:</span><div class="wklog-val">${esc(bbs) || '&mdash;'}</div></div>
-      <div class="wklog-field"><span>Work Setting:</span><div class="wklog-val">${esc(setting)}</div></div>
-      <div class="wklog-field"><span>Address:</span><div class="wklog-val">${esc(address)}</div></div>
-    </div>
-
-    <table class="wklog-table">
-      <thead>
-        <tr>
-          <th style="min-width:100px;">YEAR: ${esc(year) || new Date().getFullYear()}</th>
-          <th class="col-label">A.</th>
-          <th class="col-label">B.</th>
-          <th class="col-label">B1.</th>
-          <th class="col-label">B2.</th>
-          <th class="col-label">C.</th>
-          <th style="min-width:120px;">Supervisor<br>Signature</th>
-        </tr>
-        <tr>
-          <th>Week of:</th>
-          <th>Direct Counseling<br>with Individuals,<br>Groups, Couples<br>or Families</th>
-          <th>Non-Clinical<br>Experience*</th>
-          <th>Supervision,<br>Individual or<br>Triadic**</th>
-          <th>Supervision,<br>Group**</th>
-          <th>Total Hours<br>Per Week<br>(A + B = C)</th>
-          <th></th>
-        </tr>
-      </thead>
-      <tbody>
-        ${weeks.map(w => `
-          <tr>
-            <td class="week-label">${w.weekOf}</td>
-            <td>${w.a > 0 ? w.a.toFixed(1) : ''}</td>
-            <td>${w.b > 0 ? w.b.toFixed(1) : ''}</td>
-            <td>${w.b1 > 0 ? w.b1.toFixed(1) : ''}</td>
-            <td>${w.b2 > 0 ? w.b2.toFixed(1) : ''}</td>
-            <td>${w.c > 0 ? w.c.toFixed(1) : ''}</td>
-            <td class="sig-cell"></td>
-          </tr>
-        `).join('')}
-        <tr class="totals-row">
-          <td style="text-align:left;font-family:var(--sans);font-size:11px;">Total Hours</td>
-          <td>${totals.a.toFixed(1)}</td>
-          <td>${totals.b.toFixed(1)}</td>
-          <td>${totals.b1.toFixed(1)}</td>
-          <td>${totals.b2.toFixed(1)}</td>
-          <td>${totals.c.toFixed(1)}</td>
-          <td></td>
-        </tr>
-      </tbody>
-    </table>
-
-    <div class="wklog-footnotes">
-      <p>* <strong>Non-Clinical Experience</strong> includes: Supervision, psychological testing, writing clinical reports, progress or process notes, client-centered advocacy, and workshops, seminars, training sessions or conferences.</p>
-      <p>** Lines B1 and B2 are sub-categories of line B. When totaling weekly hours do not include the subcategories &mdash; use the formula found in box C (A + B = C). Maximum 40 hours per week.</p>
-    </div>
-
-    <div class="wklog-actions">
-      <button onclick="closeWeeklyLog()" style="background:none;border:1px solid var(--border);color:var(--text-secondary);">Close</button>
-      <button onclick="window.print()" style="background:var(--olive);color:#fff;border:none;">Print / Save as PDF</button>
-    </div>
-  `;
-
-  document.getElementById('wklogOverlay').classList.remove('hidden');
+  btn.disabled = false;
+  btn.textContent = 'Download filled BBS form (PDF)';
 }
-
-function fmtDate(d) {
-  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
-}
-
-function fmtShort(d) {
-  return `${d.getMonth()+1}/${d.getDate()}/${d.getFullYear()}`;
-}
-
-function esc(s) {
-  if (!s) return '';
-  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
-}
-
-function closeWeeklyLog() {
-  document.getElementById('wklogOverlay').classList.add('hidden');
-}
-
-// Close overlay on background click
-document.getElementById('wklogOverlay').addEventListener('click', function(e) {
-  if (e.target === this) closeWeeklyLog();
-});
 
 /* ─── Init ─── */
 function init(){
