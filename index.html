@@ -1596,7 +1596,10 @@ async function generateWeeklyLog() {
     weeks.forEach(w => { totals.a += w.a; totals.b += w.b; totals.b1 += w.b1; totals.b2 += w.b2; totals.c += w.c; });
 
     // Fetch and fill the official BBS PDF
-    const pdfBytes = await fetch(BBS_PDF_URL).then(r => r.arrayBuffer());
+    let resp = await fetch(BBS_PDF_URL);
+    if (!resp.ok) resp = await fetch('/bbs_form.pdf');
+    if (!resp.ok) throw new Error('Could not load BBS form PDF (status ' + resp.status + ')');
+    const pdfBytes = await resp.arrayBuffer();
     const pdfDoc = await PDFLib.PDFDocument.load(pdfBytes);
     const form = pdfDoc.getForm();
 
