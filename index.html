@@ -956,16 +956,18 @@ const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 let work = [], sup = [], lc = {};
 
 async function ld() {
+  const uid = currentUser ? currentUser.id : null;
+  if (!uid) return;
   try {
-    const { data: wd } = await sb.from('work_entries').select('*').order('date');
+    const { data: wd } = await sb.from('work_entries').select('*').eq('user_id', uid).order('date');
     if (wd) work = wd.map(r => ({ id: r.id, date: r.date, work: r.work, direct: r.direct, train: r.train || 0 }));
   } catch { work = []; }
   try {
-    const { data: sd } = await sb.from('supervision_entries').select('*').order('date');
+    const { data: sd } = await sb.from('supervision_entries').select('*').eq('user_id', uid).order('date');
     if (sd) sup = sd.map(r => ({ id: r.id, date: r.date, ind: r.ind, grp: r.grp, name: r.name || '' }));
   } catch { sup = []; }
   try {
-    const { data: ld2 } = await sb.from('lpcc_checks').select('*').eq('user_id', currentUser.id);
+    const { data: ld2 } = await sb.from('lpcc_checks').select('*').eq('user_id', uid);
     if (ld2) { lc = {}; ld2.forEach(r => { lc[r.id] = r.checked; }); }
   } catch { lc = {}; }
 }
