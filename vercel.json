@@ -1,5 +1,6 @@
 {
   "rewrites": [
+    { "source": "/bbs_form.pdf", "destination": "/bbs_form.pdf" },
     { "source": "/(.*)", "destination": "/index.html" }
   ]
 }
