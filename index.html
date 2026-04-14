@@ -1011,22 +1011,33 @@ async function handleAuth() {
   btn.textContent = authMode === 'login' ? 'Signing in...' : 'Creating account...';
 
   try {
-    let result;
     if (authMode === 'signup') {
-      result = await sb.auth.signUp({ email, password });
-      if (result.error) throw result.error;
-      // Auto sign-in after signup
-      currentUser = result.data.user;
+      const { data, error } = await sb.auth.signUp({ email, password });
+      if (error) throw error;
+      // After signup, explicitly sign in to establish a full session
+      const { data: signInData, error: signInErr } = await sb.auth.signInWithPassword({ email, password });
+      if (signInErr) {
+        // Signup worked but sign-in failed -- likely email confirmation is on
+        succEl.textContent = 'Account created! Check your email to confirm, then sign in.';
+        succEl.classList.add('show');
+        btn.disabled = false;
+        btn.textContent = 'Create account';
+        // Switch to login mode so they can sign in after confirming
+        authMode = 'signup'; toggleAuthMode();
+        return;
+      }
+      currentUser = signInData.user;
       onAuthSuccess(currentUser);
     } else {
-      result = await sb.auth.signInWithPassword({ email, password });
-      if (result.error) throw result.error;
-      currentUser = result.data.user;
+      const { data, error } = await sb.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      currentUser = data.user;
       onAuthSuccess(currentUser);
     }
   } catch (err) {
     let msg = err.message || 'Something went wrong.';
     if (msg.includes('Invalid login')) msg = 'Incorrect email or password.';
+    if (msg.includes('Email not confirmed')) msg = 'Please check your email and confirm your account first.';
     if (msg.includes('already registered')) msg = 'This email is already registered. Try signing in.';
     errEl.textContent = msg;
     errEl.classList.add('show');
@@ -1060,6 +1071,16 @@ async function handleLogout() {
 }
 
 async function tryAutoLogin() {
+  // Listen for auth state changes (handles token refresh, etc.)
+  sb.auth.onAuthStateChange((event, session) => {
+    if (event === 'SIGNED_IN' && session && !currentUser) {
+      onAuthSuccess(session.user);
+    }
+    if (event === 'SIGNED_OUT') {
+      currentUser = null;
+    }
+  });
+  // Check for existing session
   const { data: { session } } = await sb.auth.getSession();
   if (session && session.user) {
     onAuthSuccess(session.user);
