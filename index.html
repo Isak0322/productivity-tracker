@@ -53,7 +53,7 @@
     overflow-x: hidden;
   }
 
-  /* ── Access Code Gate ── */
+  /* ── Auth Gate ── */
   .gate-overlay {
     position: fixed; inset: 0; z-index: 9999;
     background: var(--bg);
@@ -65,7 +65,7 @@
     border: 1px solid var(--border);
     border-radius: 16px;
     padding: 40px 36px;
-    max-width: 380px;
+    max-width: 400px;
     width: 90%;
     text-align: center;
     box-shadow: 0 4px 24px rgba(0,0,0,0.06);
@@ -86,23 +86,22 @@
   .gate-box input {
     width: 100%;
     padding: 12px 16px;
-    font-size: 16px;
-    font-family: var(--mono);
+    font-size: 14px;
+    font-family: var(--sans);
     color: var(--text);
     background: var(--surface2);
     border: 1px solid var(--border);
     border-radius: 10px;
     outline: none;
-    text-align: center;
-    letter-spacing: 0.15em;
-    margin-bottom: 16px;
+    margin-bottom: 12px;
     transition: border-color 0.15s;
   }
   .gate-box input:focus {
     border-color: var(--olive-mid);
     box-shadow: 0 0 0 2.5px rgba(107,127,78,0.1);
   }
-  .gate-box .gate-btn {
+  .gate-box input::placeholder { color: var(--soft); }
+  .gate-btn {
     width: 100%;
     padding: 12px;
     font-size: 14px;
@@ -115,7 +114,15 @@
     cursor: pointer;
     transition: opacity 0.15s;
   }
-  .gate-box .gate-btn:hover { opacity: 0.9; }
+  .gate-btn:hover { opacity: 0.9; }
+  .gate-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+  .gate-btn.secondary {
+    background: none;
+    color: var(--olive);
+    border: 1px solid var(--border);
+    margin-top: 8px;
+  }
+  .gate-btn.secondary:hover { background: var(--surface2); opacity: 1; }
   .gate-error {
     color: var(--rust);
     font-size: 12px;
@@ -123,6 +130,45 @@
     display: none;
   }
   .gate-error.show { display: block; }
+  .gate-success {
+    color: var(--olive);
+    font-size: 12px;
+    margin-top: 12px;
+    display: none;
+  }
+  .gate-success.show { display: block; }
+  .gate-switch {
+    margin-top: 20px;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .gate-switch a {
+    color: var(--olive);
+    cursor: pointer;
+    text-decoration: underline;
+    text-underline-offset: 2px;
+  }
+  .gate-switch a:hover { color: var(--olive-dark); }
+  .user-bar {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .user-bar .logout-btn {
+    font-size: 11px;
+    color: var(--muted);
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 5px;
+    padding: 3px 10px;
+    cursor: pointer;
+    font-family: var(--sans);
+    transition: all 0.15s;
+  }
+  .user-bar .logout-btn:hover { color: var(--rust); border-color: var(--rust); }
 
   /* ── Header ── */
   header {
@@ -719,14 +765,23 @@
 </head>
 <body>
 
-<!-- ═══ ACCESS CODE GATE ═══ -->
+<!-- ═══ AUTH GATE ═══ -->
 <div class="gate-overlay" id="gateOverlay">
   <div class="gate-box">
     <h2>Productivity Tracker</h2>
-    <p>Enter your access code to continue.</p>
-    <input type="password" id="gateInput" placeholder="Access code" autocomplete="off" />
-    <button class="gate-btn" onclick="checkCode()">Enter</button>
-    <div class="gate-error" id="gateError">Incorrect code. Please try again.</div>
+    <p id="gateSubtitle">Sign in to access your data.</p>
+
+    <div id="loginForm">
+      <input type="email" id="authEmail" placeholder="Email address" autocomplete="email" />
+      <input type="password" id="authPassword" placeholder="Password" autocomplete="current-password" />
+      <button class="gate-btn" id="authBtn" onclick="handleAuth()">Sign in</button>
+      <div class="gate-error" id="gateError"></div>
+      <div class="gate-success" id="gateSuccess"></div>
+      <div class="gate-switch">
+        <span id="switchText">Don't have an account?</span>
+        <a onclick="toggleAuthMode()"><span id="switchLink">Create one</span></a>
+      </div>
+    </div>
   </div>
 </div>
 
@@ -737,7 +792,13 @@
         <h1>Productivity Tracker</h1>
         <p>Community Mental Health, California</p>
       </div>
-      <div class="month-pill" id="monthPill"></div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;flex-shrink:0;">
+        <div class="month-pill" id="monthPill"></div>
+        <div class="user-bar" id="userBar" style="display:none;">
+          <span id="userEmail"></span>
+          <button class="logout-btn" onclick="handleLogout()">Sign out</button>
+        </div>
+      </div>
     </div>
     <nav class="nav" id="nav">
       <button class="nav-item active" data-tab="log">Log</button>
@@ -904,14 +965,14 @@ async function ld() {
     if (sd) sup = sd.map(r => ({ id: r.id, date: r.date, ind: r.ind, grp: r.grp, name: r.name || '' }));
   } catch { sup = []; }
   try {
-    const { data: ld2 } = await sb.from('lpcc_checks').select('*');
+    const { data: ld2 } = await sb.from('lpcc_checks').select('*').eq('user_id', currentUser.id);
     if (ld2) { lc = {}; ld2.forEach(r => { lc[r.id] = r.checked; }); }
   } catch { lc = {}; }
 }
 
-async function saveLPCC(id, checked) {
-  lc[id] = checked;
-  await sb.from('lpcc_checks').upsert({ id, checked });
+async function saveLPCC(checkId, checked) {
+  lc[checkId] = checked;
+  await sb.from('lpcc_checks').upsert({ id: checkId, checked, user_id: currentUser.id });
 }
 
 function todayS() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
@@ -919,37 +980,98 @@ function curYM() { const d=new Date(); return `${d.getFullYear()}-${String(d.get
 function fmt(s) { const [,m,d]=s.split('-'); return `${parseInt(m)}/${parseInt(d)}`; }
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
-/* ─── Access Code Gate ─── */
-async function checkCode() {
-  const input = document.getElementById('gateInput').value.trim();
-  if (!input) return;
+/* ─── Auth ─── */
+let authMode = 'login'; // 'login' or 'signup'
+let currentUser = null;
+
+function toggleAuthMode() {
+  authMode = authMode === 'login' ? 'signup' : 'login';
+  document.getElementById('authBtn').textContent = authMode === 'login' ? 'Sign in' : 'Create account';
+  document.getElementById('gateSubtitle').textContent = authMode === 'login' ? 'Sign in to access your data.' : 'Create a new account to get started.';
+  document.getElementById('switchText').textContent = authMode === 'login' ? "Don't have an account?" : 'Already have an account?';
+  document.getElementById('switchLink').textContent = authMode === 'login' ? 'Create one' : 'Sign in';
+  document.getElementById('authPassword').autocomplete = authMode === 'login' ? 'current-password' : 'new-password';
+  document.getElementById('gateError').classList.remove('show');
+  document.getElementById('gateSuccess').classList.remove('show');
+}
+
+async function handleAuth() {
+  const email = document.getElementById('authEmail').value.trim();
+  const password = document.getElementById('authPassword').value;
+  const errEl = document.getElementById('gateError');
+  const succEl = document.getElementById('gateSuccess');
+  const btn = document.getElementById('authBtn');
+  errEl.classList.remove('show');
+  succEl.classList.remove('show');
+
+  if (!email || !password) { errEl.textContent = 'Enter email and password.'; errEl.classList.add('show'); return; }
+  if (password.length < 6) { errEl.textContent = 'Password must be at least 6 characters.'; errEl.classList.add('show'); return; }
+
+  btn.disabled = true;
+  btn.textContent = authMode === 'login' ? 'Signing in...' : 'Creating account...';
+
   try {
-    const { data } = await sb.from('app_config').select('value').eq('key', 'access_code').single();
-    if (data && data.value === input) {
-      sessionStorage.setItem('tracker_auth', 'true');
-      document.getElementById('gateOverlay').classList.add('hidden');
-      await ld();
-      renderLog();
+    let result;
+    if (authMode === 'signup') {
+      result = await sb.auth.signUp({ email, password });
+      if (result.error) throw result.error;
+      // Auto sign-in after signup
+      currentUser = result.data.user;
+      onAuthSuccess(currentUser);
     } else {
-      document.getElementById('gateError').classList.add('show');
+      result = await sb.auth.signInWithPassword({ email, password });
+      if (result.error) throw result.error;
+      currentUser = result.data.user;
+      onAuthSuccess(currentUser);
     }
   } catch (err) {
-    document.getElementById('gateError').textContent = 'Connection error. Check your setup.';
-    document.getElementById('gateError').classList.add('show');
+    let msg = err.message || 'Something went wrong.';
+    if (msg.includes('Invalid login')) msg = 'Incorrect email or password.';
+    if (msg.includes('already registered')) msg = 'This email is already registered. Try signing in.';
+    errEl.textContent = msg;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = authMode === 'login' ? 'Sign in' : 'Create account';
   }
 }
 
-document.getElementById('gateInput').addEventListener('keydown', e => {
-  if (e.key === 'Enter') checkCode();
-});
+async function onAuthSuccess(user) {
+  currentUser = user;
+  document.getElementById('gateOverlay').classList.add('hidden');
+  document.getElementById('userEmail').textContent = user.email;
+  document.getElementById('userBar').style.display = 'flex';
+  await ld();
+  renderLog();
+}
+
+async function handleLogout() {
+  await sb.auth.signOut();
+  currentUser = null;
+  work = []; sup = []; lc = {};
+  document.getElementById('gateOverlay').classList.remove('hidden');
+  document.getElementById('userBar').style.display = 'none';
+  document.getElementById('authEmail').value = '';
+  document.getElementById('authPassword').value = '';
+  document.getElementById('authBtn').disabled = false;
+  document.getElementById('authBtn').textContent = 'Sign in';
+  document.getElementById('gateError').classList.remove('show');
+  authMode = 'login';
+  renderLog();
+}
 
 async function tryAutoLogin() {
-  if (sessionStorage.getItem('tracker_auth') === 'true') {
-    document.getElementById('gateOverlay').classList.add('hidden');
-    await ld();
-    renderLog();
+  const { data: { session } } = await sb.auth.getSession();
+  if (session && session.user) {
+    onAuthSuccess(session.user);
   }
 }
+
+document.getElementById('authPassword').addEventListener('keydown', e => {
+  if (e.key === 'Enter') handleAuth();
+});
+document.getElementById('authEmail').addEventListener('keydown', e => {
+  if (e.key === 'Enter') document.getElementById('authPassword').focus();
+});
 
 /* ─── Tabs ─── */
 document.querySelectorAll('.nav-item').forEach(b => {
@@ -1031,7 +1153,7 @@ async function addWorkEntry() {
   work.sort((a,b)=>a.date.localeCompare(b.date));
 
   // Save to Supabase
-  await sb.from('work_entries').insert({ id: entry.id, date: dt, work: w, direct: d, train: tr });
+  await sb.from('work_entries').insert({ id: entry.id, date: dt, work: w, direct: d, train: tr, user_id: currentUser.id });
 
   document.getElementById('workHrs').value=''; document.getElementById('directHrs').value='';
   document.getElementById('trainHrs').value=''; document.getElementById('trainCheck').checked=false;
@@ -1054,7 +1176,7 @@ async function addSupEntry() {
   sup.sort((a,b)=>a.date.localeCompare(b.date));
 
   // Save to Supabase
-  await sb.from('supervision_entries').insert({ id: entry.id, date: dt, ind, grp, name: nm });
+  await sb.from('supervision_entries').insert({ id: entry.id, date: dt, ind, grp, name: nm, user_id: currentUser.id });
 
   document.getElementById('supIndHrs').value=''; document.getElementById('supGrpHrs').value='';
   document.getElementById('supName').value=''; document.getElementById('supDate').value=todayS();
