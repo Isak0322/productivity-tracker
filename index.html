@@ -1264,14 +1264,9 @@ function toggleInputMode(card) {
     document.getElementById('supHmRow').classList.toggle('hm-hidden', !isHm);
     document.getElementById('supModeLabel').textContent = isHm ? 'Switch to decimal' : 'Switch to hours + minutes';
   } else if (card === 'quick') {
-    const el = id => { const e = document.getElementById(id); if(e) e.classList.toggle('hm-hidden', arguments[0]); };
-    document.getElementById('qWorkDecRow').classList.toggle('hm-hidden', isHm);
-    document.getElementById('qWorkHmRow').classList.toggle('hm-hidden', !isHm);
-    document.getElementById('qTrainDecField').classList.toggle('hm-hidden', isHm);
-    document.getElementById('qTrainHmField').classList.toggle('hm-hidden', !isHm);
-    document.getElementById('qSupDecRow').classList.toggle('hm-hidden', isHm);
-    document.getElementById('qSupHmRow').classList.toggle('hm-hidden', !isHm);
-    document.getElementById('quickModeLabel').textContent = isHm ? 'Switch to decimal' : 'Switch to hours + minutes';
+    // Re-render calendar to rebuild the form with correct visibility
+    renderCal();
+    return;
   }
 }
 
