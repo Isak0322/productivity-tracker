@@ -724,6 +724,96 @@
   .hm-pair input::placeholder { color: var(--soft); }
   .hm-hidden { display: none; }
 
+  /* ── Quick Entry (Calendar) ── */
+  .quick-entry {
+    margin-top: 12px;
+    padding: 14px;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+  }
+  .quick-tabs {
+    display: flex;
+    gap: 0;
+    margin-bottom: 12px;
+    border-bottom: 1px solid var(--border);
+  }
+  .quick-tab {
+    flex: 1;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--sans);
+    color: var(--muted);
+    background: none;
+    border: none;
+    cursor: pointer;
+    text-align: center;
+    position: relative;
+    transition: color 0.15s;
+  }
+  .quick-tab:hover { color: var(--text-secondary); }
+  .quick-tab.active { color: var(--olive-dark); }
+  .quick-tab.active::after {
+    content: '';
+    position: absolute;
+    bottom: -1px; left: 15%; right: 15%;
+    height: 2px;
+    background: var(--olive);
+    border-radius: 1px;
+  }
+  .quick-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin-bottom: 8px;
+  }
+  .quick-row.three { grid-template-columns: 1fr 1fr 1fr; }
+  .quick-field label {
+    display: block;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--muted);
+    margin-bottom: 3px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+  .quick-field input {
+    width: 100%;
+    padding: 7px 10px;
+    font-size: 13px;
+    font-family: var(--sans);
+    color: var(--text);
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    outline: none;
+    transition: border-color 0.15s;
+    -webkit-appearance: none;
+  }
+  .quick-field input:focus {
+    border-color: var(--olive-mid);
+    box-shadow: 0 0 0 2px rgba(107,127,78,0.1);
+  }
+  .quick-field input::placeholder { color: var(--soft); }
+  .quick-btn {
+    width: 100%;
+    padding: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    font-family: var(--sans);
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: opacity 0.15s;
+  }
+  .quick-btn:hover { opacity: 0.9; }
+  .quick-btn.olive { background: var(--olive); }
+  .quick-btn.plum { background: var(--plum); }
+  .quick-panel { display: none; }
+  .quick-panel.active { display: block; }
+
   /* ── Weekly Log Setup Form ── */
   .wklog-setup .form-row-3 {
     display: grid;
@@ -1375,14 +1465,16 @@ function renderCal(){
   if(calSelected){
     const sd=parseInt(calSelected.split('-')[2]);
     const info=dayMap[sd];
-    let inner=`<div class="day-detail-header"><span class="day-detail-title">${calSelected}</span><button class="btn-sm" onclick="promptAddForDay('${calSelected}')">+ Add</button></div>`;
+
+    // Existing entries
+    let entries='';
     if(!info){
-      inner+='<div class="empty">No entries</div>';
+      entries='<div class="empty" style="padding:12px 0;">No entries yet</div>';
     } else {
       info.work.forEach(e=>{
         const wi=work.indexOf(e);
         const av=e.work-(e.train||0),p=av>0?(e.direct/av*100).toFixed(0)+'%':'\u2014';
-        inner+=`<div class="log-row" style="margin-bottom:4px;"><div class="log-tags"><span class="tag t-work">${e.work}h</span><span class="tag t-direct">${e.direct}h direct</span>${(e.train||0)>0?`<span class="tag t-train">${e.train}h train</span>`:''}</div><span class="log-pct ${parseInt(p)>=60?'good':'bad'}">${p}</span><button class="del-btn" onclick="delWorkCal(${wi})">&times;</button></div>`;
+        entries+=`<div class="log-row" style="margin-bottom:4px;"><div class="log-tags"><span class="tag t-work">${e.work}h</span><span class="tag t-direct">${e.direct}h direct</span>${(e.train||0)>0?`<span class="tag t-train">${e.train}h train</span>`:''}</div><span class="log-pct ${parseInt(p)>=60?'good':'bad'}">${p}</span><button class="del-btn" onclick="delWorkCal(${wi})">&times;</button></div>`;
       });
       info.sup.forEach(e=>{
         const si=sup.indexOf(e);
@@ -1390,16 +1482,91 @@ function renderCal(){
         if(e.ind>0)tags.push(`<span class="tag t-ind">${e.ind}h indiv</span>`);
         if(e.grp>0)tags.push(`<span class="tag t-grp">${e.grp}h group</span>`);
         if(e.name)tags.push(`<span class="tag t-name">${e.name}</span>`);
-        inner+=`<div class="log-row" style="margin-bottom:4px;"><div class="log-tags">${tags.join('')}</div><span class="log-pct sup">sup</span><button class="del-btn" onclick="delSupCal(${si})">&times;</button></div>`;
+        entries+=`<div class="log-row" style="margin-bottom:4px;"><div class="log-tags">${tags.join('')}</div><span class="log-pct sup">sup</span><button class="del-btn" onclick="delSupCal(${si})">&times;</button></div>`;
       });
     }
-    document.getElementById('dayDetail').innerHTML=`<div class="day-detail">${inner}</div>`;
+
+    // Quick entry form
+    const qForm=`
+      <div class="quick-entry">
+        <div class="quick-tabs">
+          <button class="quick-tab active" onclick="switchQuickTab('qWork',this)">Work</button>
+          <button class="quick-tab" onclick="switchQuickTab('qSup',this)">Supervision</button>
+        </div>
+        <div class="quick-panel active" id="qWork">
+          <div class="quick-row">
+            <div class="quick-field"><label>Work hrs</label><input type="number" id="qWorkHrs" placeholder="8" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+            <div class="quick-field"><label>Direct hrs</label><input type="number" id="qDirectHrs" placeholder="5" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+          </div>
+          <div class="quick-row">
+            <div class="quick-field"><label>Training hrs</label><input type="number" id="qTrainHrs" placeholder="0" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+            <div style="display:flex;align-items:flex-end;"><button class="quick-btn olive" onclick="quickAddWork('${calSelected}')">Add work</button></div>
+          </div>
+        </div>
+        <div class="quick-panel" id="qSup">
+          <div class="quick-row three">
+            <div class="quick-field"><label>Individual</label><input type="number" id="qSupInd" placeholder="1" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+            <div class="quick-field"><label>Group</label><input type="number" id="qSupGrp" placeholder="0" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+            <div class="quick-field"><label>Supervisor</label><input type="text" id="qSupName" placeholder="Name" /></div>
+          </div>
+          <button class="quick-btn plum" onclick="quickAddSup('${calSelected}')">Add supervision</button>
+        </div>
+      </div>`;
+
+    document.getElementById('dayDetail').innerHTML=`
+      <div class="day-detail">
+        <div class="day-detail-header"><span class="day-detail-title">${calSelected}</span></div>
+        ${entries}
+        ${qForm}
+      </div>`;
   } else {
     document.getElementById('dayDetail').innerHTML='';
   }
 }
 
 function selectDay(ds){calSelected=calSelected===ds?'':ds;renderCal();}
+
+function switchQuickTab(panelId, btn) {
+  document.querySelectorAll('.quick-tab').forEach(t => t.classList.remove('active'));
+  document.querySelectorAll('.quick-panel').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(panelId).classList.add('active');
+}
+
+async function quickAddWork(dateStr) {
+  const w = parseFloat(document.getElementById('qWorkHrs').value);
+  const d = parseFloat(document.getElementById('qDirectHrs').value);
+  const tr = parseFloat(document.getElementById('qTrainHrs').value) || 0;
+  if (isNaN(w) || w <= 0) { toast('Enter work hours'); return; }
+  if (isNaN(d) || d < 0) { toast('Enter direct hours'); return; }
+  if (d > w) { toast('Direct > work'); return; }
+  if (tr > w) { toast('Training > work'); return; }
+
+  const entry = { id: uuid(), date: dateStr, work: w, direct: d, train: tr };
+  work.push(entry);
+  work.sort((a, b) => a.date.localeCompare(b.date));
+  await sb.from('work_entries').insert({ id: entry.id, date: dateStr, work: w, direct: d, train: tr, user_id: currentUser.id });
+
+  toast('Entry added');
+  renderCal();
+  renderLog();
+}
+
+async function quickAddSup(dateStr) {
+  const ind = parseFloat(document.getElementById('qSupInd').value) || 0;
+  const grp = parseFloat(document.getElementById('qSupGrp').value) || 0;
+  const nm = document.getElementById('qSupName').value.trim();
+  if (ind <= 0 && grp <= 0) { toast('Enter supervision hours'); return; }
+
+  const entry = { id: uuid(), date: dateStr, ind, grp, name: nm };
+  sup.push(entry);
+  sup.sort((a, b) => a.date.localeCompare(b.date));
+  await sb.from('supervision_entries').insert({ id: entry.id, date: dateStr, ind, grp, name: nm, user_id: currentUser.id });
+
+  toast('Supervision added');
+  renderCal();
+  renderLog();
+}
 
 async function delWorkCal(i) {
   const entry = work[i];
