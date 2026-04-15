@@ -1380,15 +1380,17 @@ function renderCal(){
       inner+='<div class="empty">No entries</div>';
     } else {
       info.work.forEach(e=>{
+        const wi=work.indexOf(e);
         const av=e.work-(e.train||0),p=av>0?(e.direct/av*100).toFixed(0)+'%':'\u2014';
-        inner+=`<div class="log-row" style="margin-bottom:4px;"><div class="log-tags"><span class="tag t-work">${e.work}h</span><span class="tag t-direct">${e.direct}h direct</span>${(e.train||0)>0?`<span class="tag t-train">${e.train}h train</span>`:''}</div><span class="log-pct ${parseInt(p)>=60?'good':'bad'}">${p}</span></div>`;
+        inner+=`<div class="log-row" style="margin-bottom:4px;"><div class="log-tags"><span class="tag t-work">${e.work}h</span><span class="tag t-direct">${e.direct}h direct</span>${(e.train||0)>0?`<span class="tag t-train">${e.train}h train</span>`:''}</div><span class="log-pct ${parseInt(p)>=60?'good':'bad'}">${p}</span><button class="del-btn" onclick="delWorkCal(${wi})">&times;</button></div>`;
       });
       info.sup.forEach(e=>{
+        const si=sup.indexOf(e);
         const tags=[];
         if(e.ind>0)tags.push(`<span class="tag t-ind">${e.ind}h indiv</span>`);
         if(e.grp>0)tags.push(`<span class="tag t-grp">${e.grp}h group</span>`);
         if(e.name)tags.push(`<span class="tag t-name">${e.name}</span>`);
-        inner+=`<div class="log-row" style="margin-bottom:4px;"><div class="log-tags">${tags.join('')}</div><span class="log-pct sup">sup</span></div>`;
+        inner+=`<div class="log-row" style="margin-bottom:4px;"><div class="log-tags">${tags.join('')}</div><span class="log-pct sup">sup</span><button class="del-btn" onclick="delSupCal(${si})">&times;</button></div>`;
       });
     }
     document.getElementById('dayDetail').innerHTML=`<div class="day-detail">${inner}</div>`;
@@ -1398,6 +1400,22 @@ function renderCal(){
 }
 
 function selectDay(ds){calSelected=calSelected===ds?'':ds;renderCal();}
+
+async function delWorkCal(i) {
+  const entry = work[i];
+  work.splice(i,1);
+  if (entry && entry.id) await sb.from('work_entries').delete().eq('id', entry.id);
+  renderCal(); renderLog();
+  toast('Entry removed');
+}
+
+async function delSupCal(i) {
+  const entry = sup[i];
+  sup.splice(i,1);
+  if (entry && entry.id) await sb.from('supervision_entries').delete().eq('id', entry.id);
+  renderCal(); renderLog();
+  toast('Entry removed');
+}
 function promptAddForDay(ds){
   document.querySelectorAll('.nav-item').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.tab-panel').forEach(t=>t.classList.remove('active'));
