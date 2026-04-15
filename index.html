@@ -1245,7 +1245,7 @@ function uuid() {
 }
 
 /* ─── H+M Input Mode ─── */
-const inputMode = { work: 'dec', sup: 'dec' };
+const inputMode = { work: 'dec', sup: 'dec', quick: 'dec' };
 
 function toggleInputMode(card) {
   const isHm = inputMode[card] === 'dec';
@@ -1259,10 +1259,19 @@ function toggleInputMode(card) {
     document.getElementById('trainDecField').classList.toggle('hm-hidden', isHm);
     document.getElementById('trainHmField').classList.toggle('hm-hidden', !isHm);
     document.getElementById('workModeLabel').textContent = isHm ? 'Switch to decimal' : 'Switch to hours + minutes';
-  } else {
+  } else if (card === 'sup') {
     document.getElementById('supDecRow').classList.toggle('hm-hidden', isHm);
     document.getElementById('supHmRow').classList.toggle('hm-hidden', !isHm);
     document.getElementById('supModeLabel').textContent = isHm ? 'Switch to decimal' : 'Switch to hours + minutes';
+  } else if (card === 'quick') {
+    const el = id => { const e = document.getElementById(id); if(e) e.classList.toggle('hm-hidden', arguments[0]); };
+    document.getElementById('qWorkDecRow').classList.toggle('hm-hidden', isHm);
+    document.getElementById('qWorkHmRow').classList.toggle('hm-hidden', !isHm);
+    document.getElementById('qTrainDecField').classList.toggle('hm-hidden', isHm);
+    document.getElementById('qTrainHmField').classList.toggle('hm-hidden', !isHm);
+    document.getElementById('qSupDecRow').classList.toggle('hm-hidden', isHm);
+    document.getElementById('qSupHmRow').classList.toggle('hm-hidden', !isHm);
+    document.getElementById('quickModeLabel').textContent = isHm ? 'Switch to decimal' : 'Switch to hours + minutes';
   }
 }
 
@@ -1487,29 +1496,42 @@ function renderCal(){
     }
 
     // Quick entry form
+    const qHmActive = inputMode.quick === 'hm';
     const qForm=`
       <div class="quick-entry">
         <div class="quick-tabs">
           <button class="quick-tab active" onclick="switchQuickTab('qWork',this)">Work</button>
           <button class="quick-tab" onclick="switchQuickTab('qSup',this)">Supervision</button>
         </div>
+        <button class="input-mode-toggle ${qHmActive?'active':''}" onclick="toggleInputMode('quick')" style="margin-top:4px;"><span class="toggle-icon"></span><span id="quickModeLabel">${qHmActive?'Switch to decimal':'Switch to hours + minutes'}</span></button>
         <div class="quick-panel active" id="qWork">
-          <div class="quick-row">
+          <div class="quick-row ${qHmActive?'hm-hidden':''}" id="qWorkDecRow">
             <div class="quick-field"><label>Work hrs</label><input type="number" id="qWorkHrs" placeholder="8" min="0" max="24" step="0.25" inputmode="decimal" /></div>
             <div class="quick-field"><label>Direct hrs</label><input type="number" id="qDirectHrs" placeholder="5" min="0" max="24" step="0.25" inputmode="decimal" /></div>
           </div>
+          <div class="quick-row ${qHmActive?'':'hm-hidden'}" id="qWorkHmRow">
+            <div class="quick-field"><label>Work</label><div class="hm-pair"><input type="number" id="qWorkH" placeholder="8" min="0" max="24" inputmode="numeric" /><input type="number" id="qWorkM" placeholder="0 min" min="0" max="59" inputmode="numeric" /></div></div>
+            <div class="quick-field"><label>Direct</label><div class="hm-pair"><input type="number" id="qDirectH" placeholder="5" min="0" max="24" inputmode="numeric" /><input type="number" id="qDirectM" placeholder="0 min" min="0" max="59" inputmode="numeric" /></div></div>
+          </div>
           <div class="quick-row">
-            <div class="quick-field"><label>Training hrs</label><input type="number" id="qTrainHrs" placeholder="0" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+            <div class="quick-field ${qHmActive?'hm-hidden':''}" id="qTrainDecField"><label>Training hrs</label><input type="number" id="qTrainHrs" placeholder="0" min="0" max="24" step="0.25" inputmode="decimal" /></div>
+            <div class="quick-field ${qHmActive?'':'hm-hidden'}" id="qTrainHmField"><label>Training</label><div class="hm-pair"><input type="number" id="qTrainH" placeholder="0" min="0" max="24" inputmode="numeric" /><input type="number" id="qTrainM" placeholder="0 min" min="0" max="59" inputmode="numeric" /></div></div>
             <div style="display:flex;align-items:flex-end;"><button class="quick-btn olive" onclick="quickAddWork('${calSelected}')">Add work</button></div>
           </div>
         </div>
         <div class="quick-panel" id="qSup">
-          <div class="quick-row three">
+          <div class="quick-row ${qHmActive?'hm-hidden':''}" id="qSupDecRow">
             <div class="quick-field"><label>Individual</label><input type="number" id="qSupInd" placeholder="1" min="0" max="24" step="0.25" inputmode="decimal" /></div>
             <div class="quick-field"><label>Group</label><input type="number" id="qSupGrp" placeholder="0" min="0" max="24" step="0.25" inputmode="decimal" /></div>
-            <div class="quick-field"><label>Supervisor</label><input type="text" id="qSupName" placeholder="Name" /></div>
           </div>
-          <button class="quick-btn plum" onclick="quickAddSup('${calSelected}')">Add supervision</button>
+          <div class="quick-row ${qHmActive?'':'hm-hidden'}" id="qSupHmRow">
+            <div class="quick-field"><label>Individual</label><div class="hm-pair"><input type="number" id="qSupIndH" placeholder="1" min="0" max="24" inputmode="numeric" /><input type="number" id="qSupIndM" placeholder="0 min" min="0" max="59" inputmode="numeric" /></div></div>
+            <div class="quick-field"><label>Group</label><div class="hm-pair"><input type="number" id="qSupGrpH" placeholder="0" min="0" max="24" inputmode="numeric" /><input type="number" id="qSupGrpM" placeholder="0 min" min="0" max="59" inputmode="numeric" /></div></div>
+          </div>
+          <div class="quick-row">
+            <div class="quick-field"><label>Supervisor</label><input type="text" id="qSupName" placeholder="Name" /></div>
+            <div style="display:flex;align-items:flex-end;"><button class="quick-btn plum" onclick="quickAddSup('${calSelected}')">Add</button></div>
+          </div>
         </div>
       </div>`;
 
@@ -1534,9 +1556,9 @@ function switchQuickTab(panelId, btn) {
 }
 
 async function quickAddWork(dateStr) {
-  const w = parseFloat(document.getElementById('qWorkHrs').value);
-  const d = parseFloat(document.getElementById('qDirectHrs').value);
-  const tr = parseFloat(document.getElementById('qTrainHrs').value) || 0;
+  const w = inputMode.quick === 'hm' ? hmToDecimal('qWorkH','qWorkM') : parseFloat(document.getElementById('qWorkHrs').value);
+  const d = inputMode.quick === 'hm' ? hmToDecimal('qDirectH','qDirectM') : parseFloat(document.getElementById('qDirectHrs').value);
+  const tr = inputMode.quick === 'hm' ? hmToDecimal('qTrainH','qTrainM') : (parseFloat(document.getElementById('qTrainHrs').value) || 0);
   if (isNaN(w) || w <= 0) { toast('Enter work hours'); return; }
   if (isNaN(d) || d < 0) { toast('Enter direct hours'); return; }
   if (d > w) { toast('Direct > work'); return; }
@@ -1553,8 +1575,8 @@ async function quickAddWork(dateStr) {
 }
 
 async function quickAddSup(dateStr) {
-  const ind = parseFloat(document.getElementById('qSupInd').value) || 0;
-  const grp = parseFloat(document.getElementById('qSupGrp').value) || 0;
+  const ind = inputMode.quick === 'hm' ? hmToDecimal('qSupIndH','qSupIndM') : (parseFloat(document.getElementById('qSupInd').value) || 0);
+  const grp = inputMode.quick === 'hm' ? hmToDecimal('qSupGrpH','qSupGrpM') : (parseFloat(document.getElementById('qSupGrp').value) || 0);
   const nm = document.getElementById('qSupName').value.trim();
   if (ind <= 0 && grp <= 0) { toast('Enter supervision hours'); return; }
 
