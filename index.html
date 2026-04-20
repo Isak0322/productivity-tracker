@@ -724,6 +724,39 @@
   .hm-pair input::placeholder { color: var(--soft); }
   .hm-hidden { display: none !important; }
 
+  /* ── Section breakdown table ── */
+  .section-table { margin-top: 4px; }
+  .section-table-head {
+    display: grid;
+    grid-template-columns: 40px repeat(5, 1fr);
+    gap: 4px;
+    padding: 0 0 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 2px;
+  }
+  .section-table-head span {
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.4px;
+    text-align: right;
+  }
+  .section-table-head span:first-child { text-align: left; color: var(--muted); }
+  .section-table-row {
+    display: grid;
+    grid-template-columns: 40px repeat(5, 1fr);
+    gap: 4px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--bg);
+    align-items: end;
+  }
+  .section-table-row:last-child { border-bottom: none; }
+  .s-month { font-size: 12px; font-weight: 600; color: var(--text-secondary); padding-top: 6px; }
+  .s-cell { text-align: right; }
+  .s-cell-val { font-size: 13px; font-weight: 600; color: var(--text); line-height: 1.2; }
+  .s-cell-val.zero { color: var(--muted); font-weight: 400; }
+  .s-cell-bar { height: 3px; border-radius: 2px; margin: 3px 0 2px auto; min-width: 2px; }
+  .s-cell-delta { font-size: 9px; color: var(--muted); line-height: 1; }
+
   /* ── Quick Entry (Calendar) ── */
   .quick-entry {
     margin-top: 12px;
@@ -1021,6 +1054,11 @@
     <div class="card-head">Supervision split</div>
     <div class="split-row" id="supSplit"></div>
     <div id="supWarn"></div>
+  </div>
+  <div class="card">
+    <div class="card-head">Section breakdown</div>
+    <div class="card-label">Hours per category — last 6 months</div>
+    <div id="sectionBreakdown"></div>
   </div>
 </div>
 
@@ -1680,6 +1718,44 @@ function renderStats(){
   `;
   const ts=aI+aG, gp=ts>0?(aG/ts)*100:0;
   document.getElementById('supWarn').innerHTML=ts>0?`<div class="split-status ${gp>50?'warn':'ok'}">Group: ${gp.toFixed(0)}% of total${gp>50?' \u2014 exceeds 50% limit':' (must stay \u226450%)'}</div>`:'';
+
+  // ── Section breakdown: last 6 months per category ──
+  const catDefs=[
+    {label:'Work',  color:'var(--stone)', key:'mW'},
+    {label:'Direct',color:'var(--olive)', key:'mD'},
+    {label:'Sup(I)',color:'var(--plum)',  key:'mI'},
+    {label:'Sup(G)',color:'var(--rose)',  key:'mG'},
+    {label:'Other', color:'var(--rust)', key:'mO'},
+  ];
+  const sixMo=[];
+  for(let i=5;i>=0;i--){
+    const d2=new Date(now.getFullYear(),now.getMonth()-i,1);
+    const ym2=`${d2.getFullYear()}-${String(d2.getMonth()+1).padStart(2,'0')}`;
+    const we2=work.filter(e=>e.date.startsWith(ym2));
+    const se2=sup.filter(e=>e.date.startsWith(ym2));
+    let mW=0,mD=0,mT=0,mI=0,mG=0;
+    we2.forEach(e=>{mW+=e.work;mD+=e.direct;mT+=(e.train||0);});
+    se2.forEach(e=>{mI+=e.ind;mG+=e.grp;});
+    sixMo.push({label:MN[d2.getMonth()],mW,mD,mT,mI,mG,mO:Math.max(0,mW-mD-mT)});
+  }
+  const maxV={};
+  catDefs.forEach(c=>{maxV[c.key]=Math.max(...sixMo.map(m=>m[c.key]),0.01);});
+
+  const headRow='<span></span>'+catDefs.map(c=>`<span style="color:${c.color}">${c.label}</span>`).join('');
+  const bodyRows=sixMo.map((m,i)=>{
+    const cells=catDefs.map(c=>{
+      const v=m[c.key], barW=((v/maxV[c.key])*100).toFixed(1);
+      const prev=i>0?sixMo[i-1][c.key]:null;
+      const diff=prev!==null?v-prev:null;
+      const delta=diff!==null&&Math.abs(diff)>0.05
+        ?`<div class="s-cell-delta" style="color:${diff>0?'var(--olive)':'var(--rust)'}">${diff>0?'▲':'▼'}${Math.abs(diff).toFixed(1)}</div>`
+        :`<div class="s-cell-delta">&nbsp;</div>`;
+      return `<div class="s-cell"><div class="s-cell-val${v===0?' zero':''}">${v>0?v.toFixed(1):'—'}</div><div class="s-cell-bar" style="width:${barW}%;background:${c.color}"></div>${delta}</div>`;
+    }).join('');
+    return `<div class="section-table-row"><div class="s-month">${m.label}</div>${cells}</div>`;
+  }).join('');
+
+  document.getElementById('sectionBreakdown').innerHTML=`<div class="section-table"><div class="section-table-head">${headRow}</div>${bodyRows}</div>`;
 }
 
 function miniChart(id,data,color,lightColor){
