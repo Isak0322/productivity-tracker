@@ -724,6 +724,33 @@
   .hm-pair input::placeholder { color: var(--soft); }
   .hm-hidden { display: none !important; }
 
+  /* ── Month navigator ── */
+  .month-nav {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid var(--border);
+  }
+  .month-nav-btn {
+    background: none;
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    width: 34px; height: 34px;
+    font-size: 20px;
+    line-height: 1;
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: border-color .15s, color .15s;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .month-nav-btn:hover:not(:disabled) { color: var(--olive); border-color: var(--olive-mid); }
+  .month-nav-btn:disabled { color: var(--border); cursor: default; }
+  .month-nav-label { font-family: var(--serif); font-size: 17px; font-weight: 600; color: var(--text); }
+  .month-nav-sub { font-size: 11px; color: var(--muted); margin-top: 2px; }
+  .past-badge { display:inline-block; font-size:10px; font-weight:700; letter-spacing:.4px; background:var(--stone-light); color:var(--stone); border-radius:4px; padding:2px 7px; margin-bottom:10px; }
+
   /* ── Section breakdown table ── */
   .section-table { margin-top: 4px; }
   .section-table-head {
@@ -1027,7 +1054,14 @@
 <!-- ═══ STATS TAB ═══ -->
 <div class="tab-panel" id="tab-stats">
   <div class="card">
-    <div class="card-head">This month</div>
+    <div class="month-nav">
+      <button class="month-nav-btn" id="statsPrevBtn" onclick="statsNavMonth(-1)">&#8249;</button>
+      <div style="text-align:center">
+        <div class="month-nav-label" id="statsMonthLabel"></div>
+        <div class="month-nav-sub" id="statsMonthSub"></div>
+      </div>
+      <button class="month-nav-btn" id="statsNextBtn" onclick="statsNavMonth(1)">&#8250;</button>
+    </div>
     <div id="statsOverview"></div>
   </div>
   <div class="card">
@@ -1138,6 +1172,16 @@ async function saveLPCC(checkId, checked) {
 
 function todayS() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function curYM() { const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; }
+let statsYM = curYM();
+function statsNavMonth(dir) {
+  const [y,mo]=statsYM.split('-').map(Number);
+  const d=new Date(y,mo-1+dir,1);
+  const next=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;
+  const allYMs=[...new Set([...work.map(e=>e.date.slice(0,7)),...sup.map(e=>e.date.slice(0,7))])].sort();
+  const min=allYMs[0]||curYM();
+  if(next<min||next>curYM()) return;
+  statsYM=next; renderStats();
+}
 function fmt(s) { const [,m,d]=s.split('-'); return `${parseInt(m)}/${parseInt(d)}`; }
 const MN=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
@@ -1263,7 +1307,7 @@ document.querySelectorAll('.nav-item').forEach(b => {
     b.classList.add('active');
     document.getElementById('tab-'+b.dataset.tab).classList.add('active');
     if(b.dataset.tab==='calendar') renderCal();
-    if(b.dataset.tab==='stats') renderStats();
+    if(b.dataset.tab==='stats') { statsYM=curYM(); renderStats(); }
     if(b.dataset.tab==='lpcc') renderLPCC();
   });
 });
@@ -1653,28 +1697,45 @@ function promptAddForDay(ds){
 
 /* ─── Stats ─── */
 function renderStats(){
-  const ym=curYM(), me=work.filter(e=>e.date.startsWith(ym)), ms=sup.filter(e=>e.date.startsWith(ym));
+  const now=new Date();
+  const ym=statsYM, isCurrent=ym===curYM();
+  const me=work.filter(e=>e.date.startsWith(ym)), ms=sup.filter(e=>e.date.startsWith(ym));
   let tW=0,tD=0,tT=0; me.forEach(e=>{tW+=e.work;tD+=e.direct;tT+=(e.train||0);});
   const c=tW-tT, pct=c>0?(tD/c)*100:0;
   let tI=0,tG=0; ms.forEach(e=>{tI+=e.ind;tG+=e.grp;});
   let aW=0,aD=0,aT=0; work.forEach(e=>{aW+=e.work;aD+=e.direct;aT+=(e.train||0);});
   let aI=0,aG=0; sup.forEach(e=>{aI+=e.ind;aG+=e.grp;});
 
-  const td=new Date(),[y,m]=ym.split('-').map(Number),dim=new Date(y,m,0).getDate();
-  let wdl=0; for(let d=td.getDate()+1;d<=dim;d++){const dy=new Date(y,m-1,d).getDay();if(dy!==0&&dy!==6)wdl++;}
+  // Month navigator UI
+  const [y,mo]=ym.split('-').map(Number);
+  const allYMs=[...new Set([...work.map(e=>e.date.slice(0,7)),...sup.map(e=>e.date.slice(0,7))])].sort();
+  const minYM=allYMs[0]||curYM();
+  document.getElementById('statsMonthLabel').textContent=`${MN[mo-1]} ${y}`;
+  document.getElementById('statsMonthSub').textContent=isCurrent?'Current month':'Past month';
+  document.getElementById('statsPrevBtn').disabled=ym<=minYM;
+  document.getElementById('statsNextBtn').disabled=isCurrent;
+
+  // Projection (only meaningful for current month)
+  const dim=new Date(y,mo,0).getDate();
+  const td2=isCurrent?now.getDate():dim;
+  let wdl=0; for(let d=td2+1;d<=dim;d++){const dy=new Date(y,mo-1,d).getDay();if(dy!==0&&dy!==6)wdl++;}
   const dl=me.length, avgD=dl>0?tD/dl:0;
   const pp=c>0&&dl>0?((tD+avgD*wdl)/(c+((c/dl)*wdl)))*100:0;
   const needPD=wdl>0&&c>0?Math.max(0,(0.6*(c+((c/Math.max(1,dl))*wdl))-tD)/wdl):0;
+  const goalMet=pct>=60;
 
+  const badge=isCurrent?'':' <span class="past-badge">PAST MONTH</span>';
   const rows=[
     {color:'var(--stone)',label:'Total work hours',val:tW.toFixed(1),sub:`${c.toFixed(1)} countable`},
     {color:'var(--olive)',label:'Direct client hours',val:tD.toFixed(1),sub:`${pct.toFixed(1)}% productivity`},
     {color:'var(--plum)',label:'Supervision hours',val:(tI+tG).toFixed(1),sub:`${tI.toFixed(1)} individual + ${tG.toFixed(1)} group`},
     {color:'var(--rust)',label:'Training hours',val:tT.toFixed(1),sub:'excluded from countable'},
-    {color:'var(--text-secondary)',label:'Days logged',val:dl,sub:`${wdl} working days remaining`},
-    {color:pp>=60?'var(--olive)':'var(--rust)',label:'Projected month-end',val:pp>0?pp.toFixed(1)+'%':'\u2014',sub:pp>=60?'On track':wdl>0?`~${needPD.toFixed(1)}h direct/day needed`:''},
+    {color:'var(--text-secondary)',label:'Days logged',val:dl,sub:isCurrent?`${wdl} working days remaining`:`of ${dim} days in month`},
+    isCurrent
+      ? {color:pp>=60?'var(--olive)':'var(--rust)',label:'Projected month-end',val:pp>0?pp.toFixed(1)+'%':'\u2014',sub:pp>=60?'On track':wdl>0?`~${needPD.toFixed(1)}h direct/day needed`:''}
+      : {color:goalMet?'var(--olive)':'var(--rust)',label:'Final productivity',val:c>0?pct.toFixed(1)+'%':'\u2014',sub:goalMet?'✓ Goal met (≥60%)':'✗ Goal not met (<60%)'},
   ];
-  document.getElementById('statsOverview').innerHTML=rows.map(r=>`
+  document.getElementById('statsOverview').innerHTML=(isCurrent?'':badge)+rows.map(r=>`
     <div class="stat-row"><div class="stat-dot" style="background:${r.color}"></div><div class="stat-info"><div class="stat-label">${r.label}</div><div class="stat-val">${r.val}</div><div class="stat-sub">${r.sub}</div></div></div>
   `).join('');
 
@@ -1698,7 +1759,7 @@ function renderStats(){
   const wd=Object.entries(wks).sort(([a],[b])=>a-b).map(([w,v])=>({label:'W'+w,pct:v.c>0?(v.d/v.c)*100:0}));
   miniChart('weeklyChart',wd,'var(--olive)','var(--olive-light)');
 
-  const md=[]; const now=new Date();
+  const md=[];
   for(let i=5;i>=0;i--){const d=new Date(now.getFullYear(),now.getMonth()-i,1);const ym2=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`;const e2=work.filter(e=>e.date.startsWith(ym2));let cc=0,dd=0;e2.forEach(e=>{cc+=e.work-(e.train||0);dd+=e.direct;});md.push({label:MN[d.getMonth()],pct:cc>0?(dd/cc)*100:0});}
   miniChart('monthlyChart',md,'var(--plum)','var(--plum-light)');
 
